@@ -1,0 +1,2918 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="bot-username" content="{{ bot_username }}">
+  <title>Marketplace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117;
+      --surface: rgba(255,255,255,0.07);
+      --surface-hover: rgba(255,255,255,0.12);
+      --border: rgba(255,255,255,0.1);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --teal: #14b8a6;
+      --teal-glow: rgba(20,184,166,0.25);
+      --amber: #f59e0b;
+      --amber-glow: rgba(245,158,11,0.25);
+      --red: #ef4444;
+      --radius-card: 16px;
+      --radius-pill: 999px;
+      --radius-sm: 10px;
+      --font: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --ease: 150ms ease;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    html.light {
+      --bg: #f1f5f9;
+      --surface: rgba(255,255,255,0.85);
+      --surface-hover: rgba(255,255,255,0.95);
+      --border: rgba(0,0,0,0.08);
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+    }
+    html, body {
+      height: 100%; width: 100%;
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #app { height: 100%; width: 100%; overflow: hidden; display: flex; flex-direction: column; }
+    .screen { display: none; flex: 1; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+    .screen.active { display: flex; }
+    .screen::-webkit-scrollbar { width: 4px; }
+    .screen::-webkit-scrollbar-track { background: transparent; }
+    .screen::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 4px; }
+
+    /* Loading */
+    .loading-screen { align-items: center; justify-content: center; gap: 20px; padding: 40px 24px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--text-muted); font-size: 14px; }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px calc(12px + var(--safe-bottom));
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+      flex-shrink: 0;
+    }
+    .header-title { font-size: 17px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-back {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-size: 18px; cursor: pointer;
+      transition: background var(--ease); flex-shrink: 0;
+    }
+    .header-back:hover, .header-back:active { background: var(--surface-hover); }
+    .header-action {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 16px; cursor: pointer;
+      transition: all var(--ease); flex-shrink: 0;
+    }
+    .header-action:hover, .header-action:active { background: var(--surface-hover); color: var(--text); }
+
+    /* Scroll content */
+    .scroll-content { flex: 1; overflow-y: auto; padding: 16px 16px calc(24px + var(--safe-bottom)); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 24px; border-radius: var(--radius-pill);
+      font-family: var(--font); font-size: 15px; font-weight: 600;
+      border: none; cursor: pointer; transition: all var(--ease);
+      text-decoration: none; white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--teal); color: #fff; }
+    .btn-primary:hover { box-shadow: 0 0 20px var(--teal-glow); }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--surface-hover); }
+    .btn-amber { background: var(--amber); color: #fff; }
+    .btn-amber:hover { box-shadow: 0 0 20px var(--amber-glow); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-sm { padding: 8px 16px; font-size: 13px; }
+    .btn-block { width: 100%; }
+    .btn-icon { width: 48px; height: 48px; padding: 0; border-radius: 50%; font-size: 20px; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      transition: all var(--ease);
+    }
+    .card:hover { background: var(--surface-hover); }
+    .card-padding { padding: 16px; }
+    .card-gap { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Menu card (home screen) */
+    .menu-card {
+      display: flex; align-items: center; gap: 16px;
+      padding: 18px 20px;
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      cursor: pointer;
+      transition: all var(--ease);
+    }
+    .menu-card:hover, .menu-card:active {
+      background: var(--surface-hover);
+      transform: translateX(4px);
+    }
+    .menu-icon {
+      width: 48px; height: 48px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .menu-icon.teal { background: var(--teal-glow); }
+    .menu-icon.amber { background: var(--amber-glow); }
+    .menu-icon.purple { background: rgba(168,85,247,0.2); }
+    .menu-icon.blue { background: rgba(59,130,246,0.2); }
+    .menu-text { flex: 1; }
+    .menu-text h3 { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+    .menu-text p { font-size: 13px; color: var(--text-muted); }
+    .menu-arrow { color: var(--text-dim); font-size: 18px; }
+
+    /* Swipe card */
+    .swipe-container {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 8px 16px 4px;
+      position: relative; overflow: hidden;
+    }
+    .swipe-stack { position: relative; width: 100%; max-width: 400px; aspect-ratio: 3/5; }
+    .swipe-card {
+      position: absolute; inset: 0;
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      cursor: grab;
+      touch-action: none;
+      transition: box-shadow 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .swipe-card.dragging { transition: none; cursor: grabbing; }
+    .swipe-card-image {
+      height: 50%; background: var(--surface); position: relative;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .swipe-card-image img { width: 100%; height: 100%; object-fit: cover; }
+    .swipe-card-image .no-photo { font-size: 48px; opacity: 0.3; }
+    .swipe-card-body {
+      flex: 1; padding: 12px 16px 10px;
+      display: flex; flex-direction: column; gap: 4px; overflow-y: auto;
+    }
+    .swipe-card-body .provider-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+    }
+    .swipe-card-body .provider-row .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      font-size: 10px; flex-shrink: 0;
+    }
+    .swipe-card-body .provider-row .badge.verified { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    .swipe-card-body .provider-row .badge.tested { background: rgba(245,158,11,0.25); color: var(--amber); }
+    .swipe-card-body .provider-row .badge.likes { background: rgba(20,184,166,0.18); color: var(--teal); }
+    .swipe-card-body .provider-row .swipe-likes { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+    .swipe-card-body h2 { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .swipe-card-body .category-tag {
+      display: inline-block; padding: 2px 8px;
+      background: var(--teal-glow); color: var(--teal);
+      border-radius: var(--radius-pill); font-size: 11px; font-weight: 600;
+      align-self: flex-start;
+    }
+    .swipe-card-body .price-table {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .swipe-card-body .price-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .swipe-card-body .price-row .label { color: var(--text-muted); font-weight: 500; }
+    .swipe-card-body .price-row .amount { color: var(--amber); font-weight: 700; }
+    .swipe-card-body .city-row {
+      font-size: 12px; color: var(--text-dim);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .swipe-indicator {
+      position: absolute; top: 20px; left: 20px; right: 20px;
+      display: flex; justify-content: space-between; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s ease;
+    }
+    .swipe-indicator.show { opacity: 1; }
+    .swipe-indicator .like-badge, .swipe-indicator .nope-badge {
+      padding: 8px 18px; border-radius: var(--radius-sm);
+      font-size: 36px; line-height: 1;
+      transform: rotate(-15deg);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .swipe-indicator .like-badge { transform: rotate(-15deg); }
+    .swipe-indicator .nope-badge { transform: rotate(15deg); }
+
+    /* Contact status row */
+    .contact-status-row {
+      margin-top: auto; padding: 8px 10px; border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600; text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .contact-status-row.pending { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .contact-status-row.provider { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .contact-status-row.approved { background: rgba(20,184,166,0.15); color: var(--teal); }
+    .contact-status-row.rejected { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* Contact result screen (after like) */
+    .contact-result {
+      flex: 1; display: flex; flex-direction: column;
+      padding: 24px 20px; text-align: center;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    .contact-result .result-icon { font-size: 48px; }
+    .contact-result h3 { font-size: 18px; font-weight: 700; }
+    .contact-result .result-msg { font-size: 14px; color: var(--text-muted); max-width: 300px; line-height: 1.5; }
+    .contact-result .contact-value {
+      padding: 12px 20px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-card); font-size: 16px; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    /* Swipe actions */
+    .swipe-actions {
+      display: flex; justify-content: center; gap: 32px;
+      padding: 8px 16px 16px; flex-shrink: 0;
+    }
+    .swipe-actions .btn { width: 64px; height: 64px; border-radius: 50%; font-size: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .swipe-actions .btn-nope { background: rgba(239,68,68,0.2); color: var(--red); border: 2px solid var(--red); }
+    .swipe-actions .btn-nope:active { background: rgba(239,68,68,0.4); }
+    .swipe-actions .btn-like { background: rgba(20,184,166,0.2); color: var(--teal); border: 2px solid var(--teal); }
+    .swipe-actions .btn-like:active { background: rgba(20,184,166,0.4); }
+    .swipe-actions .btn-continue {
+      width: auto; padding: 14px 32px; border-radius: var(--radius-pill);
+      font-size: 16px; font-weight: 700;
+    }
+    .swipe-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 24px; text-align: center; gap: 12px;
+    }
+    .swipe-empty .empty-icon { font-size: 48px; opacity: 0.3; }
+    .swipe-empty h3 { font-size: 18px; font-weight: 600; }
+    .swipe-empty p { color: var(--text-muted); font-size: 14px; max-width: 280px; }
+
+    /* Card detail (full screen) */
+    .detail-scroll { padding: 0 0 calc(24px + var(--safe-bottom)); }
+    .detail-carousel {
+      position: relative; width: 100%; aspect-ratio: 16/9;
+      background: var(--surface); overflow: hidden;
+      touch-action: pan-y;
+    }
+    .detail-carousel-inner {
+      display: flex; height: 100%;
+      transition: transform 0.3s ease;
+    }
+    .detail-carousel-inner.dragging { transition: none; }
+    .detail-carousel-slide {
+      flex: 0 0 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .detail-carousel-slide img { width: 100%; height: 100%; object-fit: cover; }
+    .detail-carousel-slide .no-photo { font-size: 48px; opacity: 0.2; }
+    .detail-carousel-dots {
+      position: absolute; bottom: 10px; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 6px;
+    }
+    .detail-carousel-dots .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,0.3); transition: background 0.2s ease;
+    }
+    .detail-carousel-dots .dot.active { background: var(--teal); }
+    .detail-body { padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
+    .detail-body h1 { font-size: 22px; font-weight: 700; }
+    .detail-body .detail-provider {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: var(--text-muted);
+    }
+    .detail-body .detail-provider .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%; font-size: 10px;
+    }
+    .detail-body .detail-provider .badge.verified { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    .detail-body .detail-provider .badge.tested { background: rgba(245,158,11,0.25); color: var(--amber); }
+    .detail-body .detail-provider .badge.likes { background: rgba(20,184,166,0.18); color: var(--teal); }
+    .detail-category {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; background: var(--teal-glow); color: var(--teal);
+      border-radius: var(--radius-pill); font-size: 13px; font-weight: 600;
+      align-self: flex-start;
+    }
+    .detail-likes {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 13px; color: var(--text-dim); font-weight: 600;
+    }
+    .detail-price-table {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .detail-price-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+    }
+    .detail-price-row .label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .detail-price-row .amount { font-size: 15px; font-weight: 700; color: var(--amber); }
+    .detail-description { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+    .detail-location { font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+    .detail-contact-status {
+      padding: 10px 14px; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .detail-contact-status.pending { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .detail-contact-status.provider { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .detail-contact-status.approved { background: rgba(20,184,166,0.15); color: var(--teal); }
+    .detail-contact-status.rejected { background: rgba(239,68,68,0.15); color: var(--red); }
+    .detail-actions {
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 16px; position: sticky; bottom: 0; background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+    .detail-actions .btn { width: 100%; justify-content: center; }
+
+    /* Saved services */
+    .saved-list { display: flex; flex-direction: column; gap: 14px; }
+    .saved-card {
+      overflow: hidden;
+      background: var(--surface); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: var(--radius-card);
+      cursor: pointer;
+      transition: all var(--ease);
+    }
+    .saved-card:hover, .saved-card:active { background: var(--surface-hover); }
+    .saved-card-image {
+      width: 100%; aspect-ratio: 4/3;
+      background: var(--surface); display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .saved-card-image img { width: 100%; height: 100%; object-fit: cover; }
+    .saved-card-image .no-photo { font-size: 32px; opacity: 0.2; }
+    .saved-card-body { padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+    .saved-provider {
+      display: flex; align-items: center; gap: 5px; min-width: 0;
+      font-size: 12px; color: var(--text-muted); font-weight: 700;
+    }
+    .saved-provider .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%; font-size: 9px;
+    }
+    .saved-provider .badge.verified { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    .saved-provider .badge.tested { background: rgba(245,158,11,0.25); color: var(--amber); }
+    .saved-provider .badge.likes { background: rgba(20,184,166,0.18); color: var(--teal); }
+    .saved-card-body h4 {
+      font-size: 16px; line-height: 1.2; font-weight: 700;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .saved-card-body .saved-category {
+      width: fit-content; padding: 4px 9px; border-radius: 7px;
+      font-size: 11px; color: var(--teal); font-weight: 700;
+    }
+    .saved-card-body .saved-bottom {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      margin-top: 2px;
+    }
+    .saved-card-body .saved-price { font-size: 13px; color: var(--amber); font-weight: 800; }
+    .saved-card-body .saved-at { font-size: 11px; color: var(--text-dim); }
+    .saved-card-actions {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding-top: 6px; border-top: 1px solid var(--border);
+    }
+    .saved-card-likes { font-size: 12px; color: var(--text-dim); font-weight: 700; }
+    .saved-card-remove {
+      min-height: 38px; border-radius: 8px; flex-shrink: 0;
+      padding: 0 12px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(239,68,68,0.15); border: none; color: var(--red);
+      font-size: 13px; font-weight: 800; cursor: pointer;
+      transition: all var(--ease);
+    }
+    .saved-card-remove:hover, .saved-card-remove:active { background: rgba(239,68,68,0.3); }
+    .saved-empty {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .saved-empty .empty-icon { font-size: 40px; opacity: 0.3; margin-bottom: 12px; }
+
+    /* My Service */
+    .my-service-card {
+      overflow: hidden;
+      background: var(--surface); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: var(--radius-card);
+      display: flex; flex-direction: column;
+    }
+    .my-service-image {
+      width: 100%; aspect-ratio: 4/3; overflow: hidden;
+      background: var(--surface); display: flex; align-items: center; justify-content: center;
+    }
+    .my-service-image img { width: 100%; height: 100%; object-fit: cover; }
+    .my-service-image .no-photo { font-size: 34px; opacity: 0.22; }
+    .my-service-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .my-service-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .my-service-card h2 { font-size: 20px; font-weight: 700; }
+    .my-service-card .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0; font-weight: 600; }
+    .my-service-card .value { font-size: 14px; color: var(--text); }
+    .my-service-card .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600;
+    }
+    .my-service-card .status-badge.approved { background: rgba(20,184,166,0.2); color: var(--teal); }
+    .my-service-card .status-badge.pending { background: rgba(245,158,11,0.2); color: var(--amber); }
+    .my-service-card .status-badge.rejected { background: rgba(239,68,68,0.2); color: var(--red); }
+    .my-service-card .divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .my-service-fields { display: grid; gap: 10px; }
+    .service-state-note {
+      padding: 12px 13px; border-radius: 8px; font-size: 13px; line-height: 1.5;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.055);
+    }
+    .service-state-note.pending { color: var(--amber); border-color: rgba(245,158,11,0.28); background: rgba(245,158,11,0.12); }
+    .service-state-note.approved { color: var(--teal); border-color: rgba(20,184,166,0.28); background: rgba(20,184,166,0.12); }
+    .service-state-note.rejected { color: var(--red); border-color: rgba(239,68,68,0.28); background: rgba(239,68,68,0.12); }
+    .visibility-control {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 12px 13px; border-radius: 8px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.055);
+    }
+    .visibility-copy { min-width: 0; }
+    .visibility-copy strong { display: block; font-size: 14px; }
+    .visibility-copy span { display: block; font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .visibility-toggle {
+      min-width: 76px; height: 38px; border-radius: 999px; border: 1px solid var(--border);
+      display: inline-flex; align-items: center; justify-content: space-between; gap: 7px;
+      padding: 4px 11px 4px 5px; color: var(--text-muted);
+      background: rgba(255,255,255,0.08); font-weight: 800; cursor: pointer;
+      transition: all var(--ease);
+    }
+    .visibility-toggle.on {
+      color: #061014; background: linear-gradient(135deg, var(--teal), #34d399);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .visibility-dot {
+      width: 28px; height: 28px; border-radius: 999px; background: currentColor;
+      box-shadow: inset 0 0 0 7px rgba(255,255,255,0.78);
+    }
+    .visibility-toggle.on .visibility-dot { background: #061014; box-shadow: inset 0 0 0 7px rgba(255,255,255,0.92); }
+    .rejection-box {
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 12px 13px; border-radius: 8px;
+      border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.12);
+    }
+    .rejection-box strong { color: var(--red); font-size: 13px; }
+    .rejection-box p { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+    .my-service-empty {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .my-service-empty .empty-icon { font-size: 40px; opacity: 0.3; margin-bottom: 12px; }
+
+    /* Policy gate */
+    .policy-screen { overflow-y: auto; padding: 24px 16px calc(24px + var(--safe-bottom)); }
+    .policy-screen h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .policy-screen .policy-text {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-card); padding: 20px;
+      font-size: 14px; color: var(--text-muted); line-height: 1.7;
+      margin-bottom: 20px; white-space: pre-line;
+    }
+    .policy-screen .policy-actions { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Category filter */
+    .category-filter {
+      display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto;
+      flex-shrink: 0; scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .category-filter::-webkit-scrollbar { display: none; }
+    .category-chip {
+      padding: 6px 14px; border-radius: var(--radius-pill);
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      white-space: nowrap; cursor: pointer;
+      transition: all var(--ease); flex-shrink: 0;
+    }
+    .category-chip:hover { background: var(--surface-hover); }
+    .category-chip.active { background: var(--teal-glow); color: var(--teal); border-color: var(--teal); }
+
+    /* Toast / notification */
+    .toast {
+      position: fixed; bottom: calc(80px + var(--safe-bottom)); left: 50%; transform: translateX(-50%);
+      padding: 12px 20px; border-radius: var(--radius-pill);
+      background: var(--surface); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); color: var(--text);
+      font-size: 14px; font-weight: 500;
+      z-index: 100; pointer-events: none;
+      opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateX(-50%) translateY(20px);
+      max-width: 90vw; text-align: center;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.success { border-color: var(--teal); color: var(--teal); }
+    .toast.error { border-color: var(--red); color: var(--red); }
+
+    /* Usage bar */
+    .usage-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 12px; margin: 0 8px 4px;
+      background: var(--surface); border-radius: var(--radius);
+      font-size: 11px; font-weight: 500; gap: 8px;
+      min-height: 28px; flex-shrink: 0;
+    }
+    .usage-bar .usage-left { display: flex; align-items: center; gap: 10px; }
+    .usage-bar .usage-stat { display: flex; align-items: center; gap: 3px; opacity: 0.75; }
+    .usage-bar .usage-stat.warn { opacity: 1; color: var(--yellow); }
+    .usage-bar .usage-stat.danger { opacity: 1; color: var(--red); }
+    .usage-bar .usage-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+    .usage-bar .usage-dot.green { background: var(--teal); }
+    .usage-bar .usage-dot.amber { background: var(--yellow); }
+    .usage-bar .usage-dot.red { background: var(--red); }
+    .usage-bar .usage-countdown { font-variant-numeric: tabular-nums; }
+
+    /* Usage limit modal */
+    .usage-modal-backdrop {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .usage-modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .usage-modal {
+      background: var(--surface); backdrop-filter: blur(16px);
+      border-radius: var(--radius) var(--radius) 0 0;
+      width: 100%; max-width: 420px; padding: 24px 20px 28px;
+      transform: translateY(100%); transition: transform 0.25s ease;
+    }
+    .usage-modal-backdrop.show .usage-modal { transform: translateY(0); }
+    .usage-modal h3 { margin: 0 0 6px; font-size: 17px; font-weight: 600; }
+    .usage-modal .usage-modal-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
+    .usage-modal .usage-detail-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .usage-modal .usage-detail-row:last-child { border: none; }
+    .usage-modal .usage-detail-label { opacity: 0.7; }
+    .usage-modal .usage-detail-value { font-weight: 600; }
+    .usage-modal .usage-countdown-large {
+      font-size: 28px; font-weight: 700; text-align: center;
+      padding: 12px 0 4px; font-variant-numeric: tabular-nums;
+    }
+    .usage-modal .usage-countdown-label { text-align: center; font-size: 12px; opacity: 0.5; margin-bottom: 12px; }
+    .usage-modal .btn { width: 100%; margin-top: 12px; }
+
+    /* Error screen */
+    .error-screen {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 24px; text-align: center; gap: 16px;
+    }
+    .error-screen .error-icon { font-size: 48px; opacity: 0.3; }
+    .error-screen h3 { font-size: 18px; font-weight: 600; }
+    .error-screen p { color: var(--text-muted); font-size: 14px; max-width: 300px; }
+
+    /* Modern visual refresh */
+    :root {
+      color-scheme: dark;
+      --bg: #070a0f;
+      --surface: rgba(19, 26, 35, 0.82);
+      --surface-hover: rgba(28, 38, 50, 0.92);
+      --border: rgba(167, 185, 203, 0.16);
+      --text: #f6f8fb;
+      --text-muted: #b8c2ce;
+      --text-dim: #7f8b9a;
+      --teal: #1cc7b6;
+      --teal-glow: rgba(28, 199, 182, 0.22);
+      --amber: #f4b64d;
+      --amber-glow: rgba(244, 182, 77, 0.2);
+      --red: #f05b62;
+      --blue: #72a7ff;
+      --green: #53d891;
+      --radius-card: 8px;
+      --radius-sm: 6px;
+      --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.22);
+      --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.34);
+      --shadow-lg: 0 28px 70px rgba(0, 0, 0, 0.48);
+      --ease: 180ms cubic-bezier(.2, .7, .2, 1);
+    }
+    html.light {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --surface: rgba(255, 255, 255, 0.86);
+      --surface-hover: rgba(255, 255, 255, 0.98);
+      --border: rgba(25, 35, 48, 0.12);
+      --text: #101722;
+      --text-muted: #536070;
+      --text-dim: #8793a3;
+      --teal-glow: rgba(28, 199, 182, 0.14);
+      --amber-glow: rgba(244, 182, 77, 0.15);
+      --shadow-sm: 0 8px 20px rgba(24, 35, 48, 0.08);
+      --shadow-md: 0 18px 44px rgba(24, 35, 48, 0.12);
+      --shadow-lg: 0 26px 64px rgba(24, 35, 48, 0.16);
+    }
+    html, body {
+      background:
+        linear-gradient(145deg, rgba(28, 199, 182, 0.1) 0%, transparent 34%),
+        linear-gradient(215deg, rgba(114, 167, 255, 0.12) 0%, transparent 38%),
+        linear-gradient(180deg, #070a0f 0%, #0d121a 42%, #080b10 100%);
+      letter-spacing: 0;
+    }
+    html.light, html.light body {
+      background:
+        linear-gradient(145deg, rgba(28, 199, 182, 0.1) 0%, transparent 34%),
+        linear-gradient(215deg, rgba(114, 167, 255, 0.12) 0%, transparent 38%),
+        linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
+    }
+    #app {
+      isolation: isolate;
+    }
+    .screen {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.035), transparent 180px),
+        transparent;
+    }
+    .screen::-webkit-scrollbar-thumb {
+      background: rgba(127, 139, 154, 0.46);
+    }
+    .loading-screen,
+    .error-screen,
+    .swipe-empty,
+    .saved-empty,
+    .my-service-empty,
+    .contact-result {
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border-width: 2px;
+      border-right-color: rgba(114, 167, 255, 0.75);
+      box-shadow: 0 0 26px var(--teal-glow);
+    }
+    .loading-text {
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .header {
+      padding: 10px 14px 11px;
+      background: rgba(8, 12, 18, 0.72);
+      border-bottom-color: rgba(167, 185, 203, 0.13);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 12px 32px rgba(0,0,0,0.22);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      backdrop-filter: blur(18px) saturate(1.25);
+    }
+    html.light .header {
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.8), 0 12px 28px rgba(24,35,48,0.08);
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .header-back,
+    .header-action {
+      width: 38px;
+      height: 38px;
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    html.light .header-back,
+    html.light .header-action {
+      background: rgba(255,255,255,0.9);
+      border-color: rgba(20,30,44,0.1);
+    }
+    .header-back:active,
+    .header-action:active {
+      transform: scale(0.94);
+    }
+    .scroll-content {
+      padding: 16px 14px calc(24px + var(--safe-bottom));
+    }
+    .btn {
+      min-height: 46px;
+      border-radius: 8px;
+      font-weight: 800;
+      letter-spacing: 0;
+      box-shadow: var(--shadow-sm);
+      transform: translateZ(0);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--teal) 0%, #34d399 52%, var(--blue) 100%);
+      color: #061014;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .btn-primary:hover,
+    .btn-primary:active {
+      box-shadow: 0 14px 36px var(--teal-glow);
+    }
+    .btn-secondary {
+      background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
+      color: var(--text);
+      border-color: rgba(255,255,255,0.13);
+    }
+    html.light .btn-secondary {
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,248,252,0.92));
+      border-color: rgba(20,30,44,0.1);
+    }
+    .btn-amber {
+      background: linear-gradient(135deg, #ffd166, var(--amber));
+      color: #171008;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff7a78, var(--red));
+    }
+    .btn:active {
+      transform: scale(0.975);
+    }
+    .card,
+    .menu-card,
+    .saved-card,
+    .my-service-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.045));
+      border-color: rgba(167,185,203,0.14);
+      box-shadow: var(--shadow-sm);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      backdrop-filter: blur(18px) saturate(1.2);
+    }
+    html.light .card,
+    html.light .menu-card,
+    html.light .saved-card,
+    html.light .my-service-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,249,252,0.92));
+      border-color: rgba(20,30,44,0.1);
+    }
+    .menu-card:hover,
+    .menu-card:active,
+    .saved-card:hover,
+    .saved-card:active {
+      background: var(--surface-hover);
+      box-shadow: var(--shadow-md);
+    }
+    .category-filter {
+      padding: 12px 14px 10px;
+      background: linear-gradient(180deg, rgba(7,10,15,0.62), rgba(7,10,15,0));
+    }
+    html.light .category-filter {
+      background: linear-gradient(180deg, rgba(246,248,251,0.86), rgba(246,248,251,0));
+    }
+    .category-chip {
+      padding: 8px 13px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.065);
+      border-color: rgba(255,255,255,0.12);
+      color: var(--text-muted);
+      font-weight: 800;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    html.light .category-chip {
+      background: rgba(255,255,255,0.9);
+      border-color: rgba(20,30,44,0.1);
+    }
+    .category-chip.active {
+      background: linear-gradient(135deg, rgba(28,199,182,0.22), rgba(114,167,255,0.18));
+      color: var(--text);
+      border-color: rgba(28,199,182,0.42);
+      box-shadow: 0 8px 22px var(--teal-glow);
+    }
+    .swipe-container {
+      padding: 8px 14px 6px;
+      align-items: stretch;
+    }
+    .swipe-stack {
+      max-width: 420px;
+      aspect-ratio: 0.72;
+      margin: auto;
+      filter: drop-shadow(0 22px 42px rgba(0,0,0,0.42));
+    }
+    .swipe-card {
+      background: rgba(13,18,25,0.94);
+      border-color: rgba(255,255,255,0.14);
+      box-shadow: var(--shadow-lg);
+    }
+    html.light .swipe-card {
+      background: rgba(255,255,255,0.98);
+      border-color: rgba(20,30,44,0.12);
+    }
+    .swipe-card-image {
+      height: 56%;
+      background:
+        linear-gradient(135deg, rgba(28,199,182,0.18), rgba(114,167,255,0.12)),
+        rgba(255,255,255,0.05);
+      position: relative;
+    }
+    .swipe-card-image::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 42%;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,0.52));
+      pointer-events: none;
+      z-index: 1;
+    }
+    .swipe-card-image.verified-overlay::after {
+      background: linear-gradient(180deg, transparent 20%, rgba(59,130,246,0.45) 100%);
+    }
+    .swipe-card-image.tested-overlay::after {
+      background: linear-gradient(180deg, transparent 20%, rgba(245,158,11,0.40) 100%);
+    }
+    .swipe-card-image.verified-tested-overlay::after {
+      background: linear-gradient(180deg, transparent 20%, rgba(59,130,246,0.35) 30%, rgba(245,158,11,0.35) 100%);
+    }
+    .swipe-card-image img,
+    .detail-carousel-slide img,
+    .saved-card-image img {
+      transform: scale(1.01);
+    }
+    .swipe-photo-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      z-index: 5; width: 100%; display: flex;
+      justify-content: space-between; pointer-events: none;
+      padding: 0 4px;
+    }
+    .swipe-photo-nav button {
+      pointer-events: auto;
+      width: 28px; height: 28px;
+      border: none;
+      background: transparent;
+      color: #fff; font-size: 24px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      opacity: 0.7;
+    }
+    .swipe-photo-nav button:hover { opacity: 1; transform: scale(1.15); }
+    .swipe-photo-dots {
+      position: absolute; bottom: 8px; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 6px;
+      z-index: 5; pointer-events: none;
+    }
+    .swipe-photo-dots span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      transition: all 0.2s;
+    }
+    .swipe-photo-dots span.active { background: #fff; width: 18px; border-radius: 3px; }
+    .swipe-card-verified-tag {
+      position: absolute; top: 10px; left: 10px; z-index: 5;
+      display: flex; gap: 6px; pointer-events: none;
+    }
+    .swipe-card-verified-tag span {
+      padding: 4px 10px; border-radius: var(--radius-pill);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .swipe-card-verified-tag .tag-verified {
+      background: rgba(59,130,246,0.55);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(59,130,246,0.35);
+    }
+    .swipe-card-verified-tag .tag-tested {
+      background: rgba(245,158,11,0.55);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(245,158,11,0.35);
+    }
+    .swipe-card-likes-badge {
+      position: absolute; top: 10px; right: 10px; z-index: 5;
+      padding: 4px 10px; border-radius: var(--radius-pill);
+      font-size: 14px; font-weight: 700;
+      background: rgba(7,10,15,0.5);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 0 20px rgba(0,0,0,0.25);
+      pointer-events: none;
+    }
+    .swipe-card-body {
+      padding: 15px 16px 14px;
+      gap: 7px;
+    }
+    .swipe-card-body .provider-row,
+    .detail-body .detail-provider {
+      color: var(--text-muted);
+      min-width: 0;
+    }
+    .swipe-card-body h2 {
+      font-size: 21px;
+      line-height: 1.12;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+    .swipe-card-body .category-tag,
+    .detail-category,
+    .saved-card-body .saved-category {
+      color: var(--teal);
+      background: rgba(28,199,182,0.12);
+      border: 1px solid rgba(28,199,182,0.18);
+    }
+    .swipe-card-body .category-tag,
+    .detail-category {
+      border-radius: 7px;
+      padding: 4px 9px;
+    }
+    .swipe-card-body .price-row .amount,
+    .detail-price-row .amount {
+      color: var(--amber);
+    }
+    .swipe-actions {
+      gap: 22px;
+      padding: 10px 14px calc(16px + var(--safe-bottom));
+    }
+    .swipe-actions .btn {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      font-size: 29px;
+      box-shadow: var(--shadow-md);
+    }
+    .swipe-actions .btn-nope {
+      background: linear-gradient(180deg, rgba(240,91,98,0.2), rgba(240,91,98,0.1));
+      border-color: rgba(240,91,98,0.58);
+    }
+    .swipe-actions .btn-like {
+      background: linear-gradient(180deg, rgba(28,199,182,0.22), rgba(28,199,182,0.1));
+      border-color: rgba(28,199,182,0.58);
+    }
+    .swipe-actions .btn-continue {
+      width: min(280px, 86vw);
+      height: auto;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .swipe-indicator .like-badge,
+    .swipe-indicator .nope-badge {
+      background: rgba(7,10,15,0.62);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: var(--shadow-sm);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+    .contact-status-row,
+    .detail-contact-status {
+      border: 1px solid currentColor;
+      border-radius: 7px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .detail-carousel {
+      background:
+        linear-gradient(135deg, rgba(28,199,182,0.14), rgba(114,167,255,0.12)),
+        rgba(255,255,255,0.04);
+      box-shadow: var(--shadow-md);
+    }
+    .detail-carousel-dots .dot {
+      width: 7px;
+      height: 7px;
+      background: rgba(255,255,255,0.44);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+    }
+    .detail-carousel-dots .dot.active {
+      width: 18px;
+      border-radius: 999px;
+      background: var(--teal);
+    }
+    .detail-body {
+      padding: 18px 14px;
+      gap: 14px;
+    }
+    .detail-body h1 {
+      font-size: 24px;
+      line-height: 1.12;
+      overflow-wrap: anywhere;
+    }
+    .detail-price-row {
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.045));
+      border-color: rgba(167,185,203,0.14);
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+    html.light .detail-price-row {
+      background: rgba(255,255,255,0.96);
+      border-color: rgba(20,30,44,0.1);
+    }
+    .detail-description {
+      color: var(--text-muted);
+    }
+    .detail-actions {
+      padding: 12px 14px calc(14px + var(--safe-bottom));
+      background: rgba(7,10,15,0.78);
+      border-top-color: rgba(167,185,203,0.14);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      backdrop-filter: blur(18px) saturate(1.2);
+    }
+    html.light .detail-actions {
+      background: rgba(246,248,251,0.82);
+    }
+    .saved-card {
+      padding: 0;
+    }
+    .saved-card-image {
+      background:
+        linear-gradient(135deg, rgba(28,199,182,0.12), rgba(114,167,255,0.1)),
+        rgba(255,255,255,0.05);
+    }
+    .saved-card-body h4 {
+      font-weight: 800;
+    }
+    .saved-card-remove {
+      background: rgba(240,91,98,0.12);
+      border-radius: 8px;
+    }
+    .my-service-card {
+      padding: 0;
+    }
+    .my-service-card .label {
+      color: var(--text-dim);
+      letter-spacing: 0;
+    }
+    .my-service-card .status-badge {
+      border-radius: 7px;
+      border: 1px solid currentColor;
+    }
+    .policy-screen .policy-text {
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.045));
+      border-color: rgba(167,185,203,0.14);
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+    .toast {
+      bottom: calc(76px + var(--safe-bottom));
+      background: rgba(13,18,25,0.9);
+      border-color: rgba(167,185,203,0.18);
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      backdrop-filter: blur(16px) saturate(1.2);
+    }
+    html.light .toast {
+      background: rgba(255,255,255,0.95);
+    }
+    .toast.success {
+      background: linear-gradient(135deg, rgba(28,199,182,0.18), rgba(83,216,145,0.12));
+    }
+    .toast.error {
+      background: linear-gradient(135deg, rgba(240,91,98,0.18), rgba(255,122,120,0.1));
+    }
+    .budget-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(3, 7, 12, 0.58);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+    .budget-sheet-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .budget-sheet {
+      width: min(100%, 500px);
+      padding: 18px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(19, 26, 35, 0.98), rgba(12, 17, 24, 0.98));
+      border: 1px solid rgba(167, 185, 203, 0.16);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(18px);
+      transition: transform 180ms ease;
+    }
+    html.light .budget-sheet {
+      background: linear-gradient(180deg, rgba(255,255,255,0.99), rgba(244,248,252,0.98));
+      border-color: rgba(20,30,44,0.12);
+    }
+    .budget-sheet-backdrop.show .budget-sheet {
+      transform: translateY(0);
+    }
+    .budget-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .budget-sheet-title {
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 800;
+    }
+    .budget-sheet-close {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .budget-field-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 800;
+    }
+    .budget-input {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      font: 800 18px/1 var(--font);
+      outline: none;
+    }
+    html.light .budget-input {
+      background: rgba(255,255,255,0.94);
+    }
+    .budget-input:focus {
+      border-color: rgba(28,199,182,0.7);
+      box-shadow: 0 0 0 3px rgba(28,199,182,0.14);
+    }
+    .budget-average,
+    .budget-error {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .budget-average {
+      color: var(--text-muted);
+    }
+    .budget-error {
+      color: var(--red);
+      min-height: 20px;
+      font-weight: 800;
+    }
+    .budget-sheet-actions {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .location-inline-prompt {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid rgba(244, 182, 77, 0.32);
+      border-radius: 8px;
+      background: rgba(244, 182, 77, 0.1);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .location-inline-prompt a {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 900;
+    }
+    .provider-row .badge,
+    .detail-provider .badge {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .swipe-card-body .provider-row .badge {
+      width: 22px; height: 22px; font-size: 12px;
+    }
+    .provider-row .badge.verified,
+    .detail-provider .badge.verified {
+      color: #60a5fa;
+      background: rgba(59,130,246,0.25);
+      box-shadow: 0 0 10px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .provider-row .badge.tested,
+    .detail-provider .badge.tested {
+      color: var(--amber);
+      background: rgba(245,158,11,0.25);
+      box-shadow: 0 0 10px rgba(245,158,11,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .provider-row .badge.likes,
+    .detail-provider .badge.likes {
+      width: auto; min-width: 22px; padding: 0 5px;
+      border-radius: 11px; font-size: 11px;
+      background: rgba(20,184,166,0.20);
+      color: var(--teal);
+      box-shadow: 0 0 8px rgba(20,184,166,0.18);
+    }
+    @media (min-width: 720px) {
+      #app {
+        max-width: 520px;
+        margin: 0 auto;
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+      }
+    }
+    @media (max-height: 700px) {
+      .swipe-card-image {
+        height: 50%;
+      }
+      .swipe-card-body h2 {
+        font-size: 19px;
+      }
+      .swipe-actions .btn {
+        width: 60px;
+        height: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast" class="toast"></div>
+  <div id="usageModalBackdrop" class="usage-modal-backdrop">
+    <div class="usage-modal">
+      <h3 id="usageModalTitle">Contact Limit Reached</h3>
+      <div id="usageModalSub" class="usage-modal-sub"></div>
+      <div id="usageModalDetails"></div>
+      <button class="btn btn-primary" id="usageModalCloseBtn">Got it</button>
+    </div>
+  </div>
+  <script>
+    (function () {
+      'use strict';
+
+      /* ── state ─────────────────────────────────── */
+      const state = {
+        screen: 'loading',
+        user: null,
+        token: null,
+        services: [],
+        currentIndex: 0,
+        filters: { category_id: null },
+        savedServices: [],
+        categories: [],
+        myService: null,
+        usageInfo: null,
+      };
+
+      const API_BASE = '';
+      let toastTimer = null;
+
+      /* ── Telegram WebApp ──────────────────────── */
+      const tg = window.Telegram && window.Telegram.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        tg.enableClosingConfirmation();
+        const root = document.documentElement;
+        if (tg.colorScheme === 'light') root.classList.remove('dark');
+        else root.classList.add('dark');
+      }
+
+      /* ── helpers ────────────────────────────────── */
+      function $(sel) { return document.querySelector(sel); }
+      function $$(sel) { return document.querySelectorAll(sel); }
+
+      function getBotUsername() {
+        const meta = document.querySelector('meta[name="bot-username"]');
+        return meta ? meta.getAttribute('content') : '';
+      }
+
+      function getBotDeepLink(startParam) {
+        const botUsername = getBotUsername().replace(/^@/, '');
+        if (!botUsername) return null;
+        return 'https://t.me/' + botUsername + (startParam ? '?start=' + encodeURIComponent(startParam) : '');
+      }
+
+      function qs(key) {
+        const p = new URLSearchParams(window.location.search);
+        return p.get(key);
+      }
+
+      function getApiBase() {
+        const origin = window.location.origin;
+        return origin + '/api';
+      }
+
+      function fetchApi(path, opts = {}) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (state.token) headers['Authorization'] = 'Token ' + state.token;
+        const url = getApiBase() + path;
+        return fetch(url, { ...opts, headers })
+          .then(r => r.json())
+          .catch(err => ({ success: false, error: err.message || 'Network error' }));
+      }
+
+      function showToast(msg, type) {
+        const el = document.getElementById('toast');
+        if (!el) return;
+        if (toastTimer) { clearTimeout(toastTimer); el.classList.remove('show'); }
+        el.textContent = msg;
+        el.className = 'toast' + (type ? ' ' + type : '');
+        requestAnimationFrame(() => { el.classList.add('show'); });
+        toastTimer = setTimeout(() => { el.classList.remove('show'); }, 3000);
+      }
+
+      function renderUsageBar(usage) {
+        const el = document.getElementById('usageBar');
+        if (!el) return;
+        if (!usage) {
+          el.innerHTML = ''; el.style.display = 'none';
+          return;
+        }
+        const today = usage.requests_today || 0;
+        const daily = usage.daily_hard_limit || Infinity;
+        const weekly = usage.weekly_requests || 0;
+        const weeklyCap = usage.weekly_hard_limit || Infinity;
+        const retry = usage.retry_after_seconds || 0;
+        const pct = Math.min(today / Math.max(daily, 1), 1);
+        const dotClass = pct >= 1 ? 'red' : pct >= 0.75 ? 'amber' : 'green';
+
+        let countdownHtml = '';
+        if (retry > 0) {
+          countdownHtml = '<span class="usage-countdown" data-retry="' + retry + '" data-ts="' + Date.now() + '">'
+            + formatCountdown(retry) + '</span>';
+        }
+
+        el.style.display = 'flex';
+        el.innerHTML =
+          '<span class="usage-dot ' + dotClass + '"></span>'
+          + '<div class="usage-left">'
+          + '<span class="usage-stat' + (today >= daily ? ' danger' : today >= daily * 0.75 ? ' warn' : '') + '">'
+          + '<span>📞</span> ' + today + '/' + daily + ' today'
+          + '</span>'
+          + '<span class="usage-stat' + (weekly >= weeklyCap ? ' danger' : '') + '">'
+          + weekly + '/' + (weeklyCap === Infinity ? '∞' : weeklyCap) + ' week'
+          + '</span>'
+          + '</div>'
+          + (countdownHtml ? '<span>' + countdownHtml + '</span>' : '');
+
+        if (retry > 0) startCountdownTicker(el);
+      }
+
+      function formatCountdown(sec) {
+        if (sec <= 0) return '';
+        if (sec < 60) return sec + 's';
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return m + ':' + (s < 10 ? '0' : '') + s;
+      }
+
+      function startCountdownTicker(container) {
+        if (container._countdownTimer) return;
+        container._countdownTimer = setInterval(() => {
+          const el = container.querySelector('.usage-countdown');
+          if (!el) { clearInterval(container._countdownTimer); container._countdownTimer = null; return; }
+          const elapsed = Math.floor((Date.now() - parseInt(el.dataset.ts)) / 1000);
+          const remaining = Math.max(0, parseInt(el.dataset.retry) - elapsed);
+          if (remaining <= 0) {
+            el.textContent = 'now';
+            clearInterval(container._countdownTimer);
+            container._countdownTimer = null;
+          } else {
+            el.textContent = formatCountdown(remaining);
+          }
+        }, 1000);
+      }
+
+      function showUsageLimitModal(usage) {
+        const backdrop = document.getElementById('usageModalBackdrop');
+        if (!backdrop || !usage) return;
+        const titleEl = document.getElementById('usageModalTitle');
+        const subEl = document.getElementById('usageModalSub');
+        const detailsEl = document.getElementById('usageModalDetails');
+
+        const pct = usage.protection_level;
+        const today = usage.requests_today || 0;
+        const daily = usage.daily_hard_limit || Infinity;
+        const weekly = usage.weekly_requests || 0;
+        const weeklyCap = usage.weekly_hard_limit || Infinity;
+        const retry = usage.retry_after_seconds || 0;
+
+        if (pct === 'weekly_lock') {
+          titleEl.textContent = 'Weekly Limit Reached';
+          subEl.textContent = 'You\'ve used all available contact requests for this week.';
+        } else if (today >= daily) {
+          titleEl.textContent = 'Daily Limit Reached';
+          subEl.textContent = 'You\'ve hit the maximum daily contact requests. Check back tomorrow.';
+        } else if (retry > 0) {
+          titleEl.textContent = 'Pacing Cooldown Active';
+          subEl.textContent = 'Slow down! Take a short break between contact requests.';
+        } else {
+          titleEl.textContent = 'Contact Limit Reached';
+          subEl.textContent = usage.message || '';
+        }
+
+        let html = '';
+        html += '<div class="usage-detail-row"><span class="usage-detail-label">Today</span><span class="usage-detail-value">' + today + ' / ' + daily + '</span></div>';
+        html += '<div class="usage-detail-row"><span class="usage-detail-label">This Week</span><span class="usage-detail-value">' + weekly + ' / ' + (weeklyCap === Infinity ? '∞' : weeklyCap) + '</span></div>';
+
+        if (retry > 0) {
+          html += '<div class="usage-countdown-large" id="modalCountdown">' + formatCountdown(retry) + '</div>';
+          html += '<div class="usage-countdown-label">until next request</div>';
+          html += '<div class="usage-detail-row"><span class="usage-detail-label">Protection Level</span><span class="usage-detail-value" style="text-transform:capitalize">' + (pct || 'paced') + '</span></div>';
+
+          const endTs = Date.now() + retry * 1000;
+          if (backdrop._modalTimer) clearInterval(backdrop._modalTimer);
+          backdrop._modalTimer = setInterval(() => {
+            const cdEl = document.getElementById('modalCountdown');
+            if (!cdEl) { clearInterval(backdrop._modalTimer); return; }
+            const remaining = Math.max(0, Math.floor((endTs - Date.now()) / 1000));
+            cdEl.textContent = formatCountdown(remaining);
+            if (remaining <= 0) {
+              cdEl.textContent = 'Now';
+              clearInterval(backdrop._modalTimer);
+            }
+          }, 1000);
+        }
+
+        detailsEl.innerHTML = html;
+        backdrop.classList.add('show');
+      }
+
+      function closeUsageLimitModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        const backdrop = document.getElementById('usageModalBackdrop');
+        if (!backdrop) return;
+        backdrop.classList.remove('show');
+        if (backdrop._modalTimer) { clearInterval(backdrop._modalTimer); backdrop._modalTimer = null; }
+      }
+
+      function closeBudgetSheet() {
+        const backdrop = document.getElementById('budgetSheetBackdrop');
+        if (!backdrop) return;
+        backdrop.classList.remove('show');
+        setTimeout(() => backdrop.remove(), 180);
+      }
+
+      function formatAverageAmount(amount) {
+        return amount || '-';
+      }
+
+      function renderAverageLine(svc, averages, loading) {
+        const categoryName = svc.category ? svc.category.name : 'this service';
+        if (loading) return 'Loading average prices...';
+        return 'Average price for ' + categoryName + ': '
+          + formatAverageAmount(averages.half_day) + ' / '
+          + formatAverageAmount(averages.full_day) + ' / '
+          + formatAverageAmount(averages.night) + ' ETB.';
+      }
+
+      function formatPrice(price) {
+        const labels = { half_day: 'Half Day', full_day: 'Full Day', night: 'Night' };
+        return (labels[price.price_type] || price.price_type) + ': ' + price.amount + ' ETB';
+      }
+
+      function getPhotoUrl(photos) {
+        if (!photos || photos.length === 0) return null;
+        const sorted = [...photos].sort((a, b) => a.order_index - b.order_index);
+        return getPhotoSrc(sorted[0]);
+      }
+
+      function getPhotoSrc(photo) {
+        if (!photo) return null;
+        if (photo.url) return photo.url;
+        if (photo.photo_url) return photo.photo_url;
+        if (photo.id) return getApiBase() + '/service/photo/' + encodeURIComponent(photo.id) + '/';
+        if (photo.telegram_file_id && /^https?:\/\//i.test(photo.telegram_file_id)) {
+          return photo.telegram_file_id;
+        }
+        return null;
+      }
+
+      function renderImageOrPlaceholder(photo) {
+        const src = getPhotoSrc(photo);
+        const img = src
+          ? `<img src="${escHtml(src)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : '';
+        return img + `<div class="no-photo" style="display:${src ? 'none' : 'flex'}">📷</div>`;
+      }
+
+      function getLikesBadge(likesCount) {
+        const count = Number(likesCount || 0);
+        if (count >= 151) return '🔥';
+        if (count >= 71) return '💫';
+        if (count >= 31) return '🌟';
+        if (count >= 11) return '😃';
+        if (count >= 1) return '😊';
+        return '';
+      }
+
+      function serviceIsVerified(svc) {
+        return Boolean(svc && (svc.is_verified || svc.provider_is_verified));
+      }
+
+      function serviceIsTested(svc) {
+        return Boolean(svc && (svc.admin_tested_badge || svc.provider_admin_tested_badge));
+      }
+
+      function renderProviderBadges(svc) {
+        const parts = [];
+        const likesBadge = getLikesBadge(svc && svc.likes_count);
+        if (likesBadge) {
+          parts.push(`<span class="badge likes" title="${escHtml((svc.likes_count || 0) + ' likes')}">${likesBadge}</span>`);
+        }
+        if (serviceIsVerified(svc)) {
+          parts.push('<span class="badge verified" title="Verified by admin">✓</span>');
+        }
+        if (serviceIsTested(svc)) {
+          parts.push('<span class="badge tested" title="Tested by admin">⭐</span>');
+        }
+        return parts.join('');
+      }
+
+      function contactValueFromRequest(cr) {
+        if (!cr || !cr.contact_visible || !cr.provider_contact) return null;
+        return cr.provider_contact;
+      }
+
+      function buildTelegramContactLink(providerContact, serviceTitle) {
+        if (!providerContact) return null;
+        const hasTelegram = providerContact.telegram_username;
+        const isPhone = providerContact.contact_type === 'secondary_phone_number';
+        const botName = getBotUsername().replace(/^@/, '') || 'Leomatchbot';
+        const myName = state.user ? (state.user.display_name || state.user.first_name || 'Someone') : 'Someone';
+
+        let telegramLink = null;
+        if (hasTelegram) {
+          const username = hasTelegram.replace(/^@/, '');
+          const text = `Hi! I found you on ${botName}${serviceTitle ? ' for "' + serviceTitle + '"' : ''}. I'm ${myName}. Let's connect!`;
+          telegramLink = {
+            type: 'telegram',
+            url: 'https://t.me/' + encodeURIComponent(username) + '?text=' + encodeURIComponent(text),
+            display: '@' + username,
+          };
+        }
+
+        if (isPhone && hasTelegram) {
+          return { type: 'both', phone: providerContact.contact_value, telegram: telegramLink };
+        }
+        if (isPhone) {
+          return { type: 'phone', display: providerContact.contact_value };
+        }
+        return telegramLink || { type: 'phone', display: providerContact.contact_value };
+      }
+
+      function contactStatusLabel(status, contactInfo) {
+        switch (status) {
+          case 'provider_pending':
+            return { cls: 'provider', label: '⏳ Waiting for provider...' };
+          case 'pending':
+            return { cls: 'pending', label: '⏳ Admin reviewing...' };
+          case 'approved':
+          case 'auto_approved':
+            if (contactInfo && contactInfo.type === 'both') {
+              const phone = escHtml(contactInfo.phone);
+              const tg = contactInfo.telegram;
+              return {
+                cls: 'approved link',
+                html: '<div style="display:flex;flex-direction:column;gap:6px">'
+                  + '<span style="font-weight:600">📞 ' + phone + '</span>'
+                  + '<a href="' + escHtml(tg.url) + '" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none;font-weight:700;display:flex;align-items:center;gap:6px">💬 Contact ' + escHtml(tg.display) + ' →</a>'
+                  + '</div>'
+              };
+            }
+            if (contactInfo && contactInfo.url) {
+              return {
+                cls: 'approved link',
+                html: '<a href="' + escHtml(contactInfo.url) + '" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none;font-weight:700;display:flex;align-items:center;gap:6px">💬 Contact ' + escHtml(contactInfo.display) + ' →</a>'
+              };
+            }
+            return { cls: 'approved', label: contactInfo && contactInfo.display ? '✅ Contact: ' + contactInfo.display : '✅ Contact approved!' };
+          case 'rejected':
+          case 'provider_rejected':
+            return { cls: 'rejected', label: '❌ Not available. Try another provider.' };
+          default:
+            return { cls: '', label: '' };
+        }
+      }
+
+      function renderContactStatusRow(contactStatus) {
+        if (!contactStatus) return '';
+        const status = contactStatusLabel(contactStatus.status, contactStatus.contact_value);
+        if (!status.label && !status.html) return '';
+        if (status.html) return '<div class="contact-status-row ' + status.cls + '">' + status.html + '</div>';
+        return '<div class="contact-status-row ' + status.cls + '">' + escHtml(status.label) + '</div>';
+      }
+
+      function buildDiscoveryQuery(extra) {
+        const params = new URLSearchParams();
+        if (state.filters.category_id) params.set('category_id', state.filters.category_id);
+        Object.entries(extra || {}).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') params.set(key, value);
+        });
+        const query = params.toString();
+        return query ? '?' + query : '';
+      }
+
+      /* ── render: app container ─────────────────── */
+      function renderApp(html) {
+        document.getElementById('app').innerHTML = html;
+      }
+
+      /* ── render: loading ────────────────────────── */
+      function renderLoading() {
+        renderApp(`
+          <div class="screen active loading-screen">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading Marketplace...</div>
+          </div>
+        `);
+      }
+
+      /* ── render: error ──────────────────────────── */
+      function renderError(msg) {
+        renderApp(`
+          <div class="screen active error-screen">
+            <div class="error-icon">⚠️</div>
+            <h3>Something went wrong</h3>
+            <p>${msg || 'An unexpected error occurred.'}</p>
+            <button class="btn btn-secondary" onclick="location.reload()">Try Again</button>
+          </div>
+        `);
+      }
+
+      /* ── render: policy gate ────────────────────── */
+      function renderPolicyGate() {
+        const botUsername = getBotUsername().replace(/^@/, '');
+        const deepLink = botUsername ? 'https://t.me/' + botUsername + '?start=policy' : null;
+        renderApp(`
+          <div class="screen active policy-screen">
+            <div style="text-align:center;padding:40px 0 20px;font-size:48px">📋</div>
+            <h1>Policy Required</h1>
+            <p style="color:var(--text-muted);margin-bottom:24px;font-size:14px;line-height:1.6;">
+              To use this marketplace, please open the bot and complete the policy review.
+            </p>
+            <div class="policy-actions">
+              ${deepLink ? `<a class="btn btn-primary btn-block" href="${deepLink}" target="_blank">📱 Open Bot</a>` : '<button class="btn btn-secondary btn-block" disabled>Bot username not configured</button>'}
+            </div>
+          </div>
+        `);
+      }
+
+      function userCanManageService() {
+        const role = state.user && state.user.role;
+        return role === 'provider' || role === 'both';
+      }
+
+      function serviceStatusLabel(status) {
+        const normalized = String(status || '').toLowerCase();
+        if (normalized === 'approved') return 'Approved';
+        if (normalized === 'rejected') return 'Rejected';
+        if (normalized === 'pending') return 'Pending';
+        return status || 'Unknown';
+      }
+
+      function userIsPureProvider() {
+        return state.user && state.user.role === 'provider';
+      }
+
+      /* ── render: home ──────────────────────────── */
+      function renderHome() {
+        const name = state.user ? state.user.display_name || state.user.first_name || 'User' : 'User';
+        const myServiceButton = userCanManageService() ? `
+              <button class="btn btn-secondary" style="padding:20px 24px;border-radius:var(--radius-card);font-size:18px;font-weight:700;justify-content:flex-start;gap:16px;" onclick="window.app.navigate('my_service')">
+                <span style="font-size:28px">📋</span>
+                <span>My Service</span>
+              </button>` : '';
+        renderApp(`
+          <div class="screen active" style="padding:0">
+            <div style="flex:1;display:flex;flex-direction:column;padding:32px 20px 40px;gap:20px;">
+              <div style="text-align:center;padding:20px 0;">
+                <div style="font-size:56px;margin-bottom:8px;opacity:0.9">🛒</div>
+                <h1 style="font-size:28px;font-weight:800;letter-spacing:0">Marketplace</h1>
+                <p style="color:var(--text-muted);font-size:14px;margin-top:4px">Hello, ${escHtml(name)}</p>
+              </div>
+              <button class="btn btn-primary" style="padding:20px 24px;border-radius:var(--radius-card);font-size:18px;font-weight:700;justify-content:flex-start;gap:16px;" onclick="window.app.navigate('swipe')">
+                <span style="font-size:28px">🔍</span>
+                <span>Find a Service</span>
+              </button>
+              <button class="btn btn-secondary" style="padding:20px 24px;border-radius:var(--radius-card);font-size:18px;font-weight:700;justify-content:flex-start;gap:16px;" onclick="window.app.navigate('saved')">
+                <span style="font-size:28px">💾</span>
+                <span>Saved Services</span>
+              </button>
+              ${myServiceButton}
+            </div>
+          </div>
+        `);
+      }
+
+      function renderProviderRestricted(target) {
+        renderApp(`
+          <div class="screen active" style="padding:0">
+            <div class="header">
+              <button class="header-back" onclick="window.app.navigate('home')">‹</button>
+              <span class="header-title">${target === 'swipe' ? 'Discover' : 'Browse'}</span>
+              <span class="header-action" style="visibility:hidden">x</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center;">
+              <div style="font-size:72px;margin-bottom:16px;opacity:0.6">🔒</div>
+              <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Provider Mode</h2>
+              <p style="color:var(--text-muted);font-size:15px;line-height:1.6;max-width:300px;margin-bottom:24px">
+                As a provider, you manage your own service listings.<br>
+                Browse other providers from your customer account.
+              </p>
+              <button class="btn btn-primary" style="padding:14px 32px;border-radius:var(--radius-pill);font-size:16px;font-weight:700" onclick="window.app.navigate('my_service')">
+                📋 Go to My Service
+              </button>
+            </div>
+          </div>
+        `);
+      }
+
+      /* ── render: swipe ─────────────────────────── */
+      function renderSwipe() {
+        state.contactResult = null;
+        state._swipeNextCard = null;
+        renderApp(`
+          <div class="screen active">
+            <div class="header">
+              <button class="header-back" onclick="window.app.navigate('home')">‹</button>
+              <span class="header-title">Discover</span>
+              <span class="header-action" style="visibility:hidden">x</span>
+            </div>
+            <div id="usageBar" class="usage-bar"></div>
+            <div id="swipeContent" class="swipe-container"></div>
+            <div id="swipeActions" class="swipe-actions"></div>
+          </div>
+        `);
+        loadSwipeServices(false);
+      }
+
+      function renderCategoryFilter() {
+        const container = document.getElementById('categoryFilter');
+        if (!container) return;
+        let html = '<div class="category-chip' + (state.filters.category_id === null ? ' active' : '') + '" data-cid="">All</div>';
+        state.categories.forEach(c => {
+          html += '<div class="category-chip' + (state.filters.category_id === c.id ? ' active' : '') + '" data-cid="' + c.id + '">' + escHtml(c.name) + '</div>';
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('.category-chip').forEach(el => {
+          el.addEventListener('click', function () {
+            const cid = this.dataset.cid;
+            state.filters.category_id = cid ? parseInt(cid) : null;
+            container.querySelectorAll('.category-chip').forEach(ch => ch.classList.remove('active'));
+            this.classList.add('active');
+            state.services = [];
+            state.currentIndex = 0;
+            state._swipeNextCard = null;
+            state.contactResult = null;
+            loadSwipeServices(false);
+          });
+        });
+      }
+
+      function loadSwipeServices(showLoading) {
+        const container = document.getElementById('swipeContent');
+        if (showLoading && container) {
+          container.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div></div>';
+        }
+        const actions = document.getElementById('swipeActions');
+        fetchApi('/discovery/swipe/' + buildDiscoveryQuery())
+          .then(res => {
+            state.usageInfo = res.provider_protection || null;
+            renderUsageBar(state.usageInfo);
+            if (res.success && res.card) {
+              state.services = [res.card];
+              state.currentIndex = 0;
+              state._swipeNextCard = null;
+              renderSwipeContent();
+              prefetchNextCard();
+            } else if (res.error === 'LOCATION_REQUIRED') {
+              state.services = [];
+              if (container) {
+                container.innerHTML = `
+                  <div class="swipe-empty">
+                    <div class="empty-icon">📍</div>
+                    <h3>Location needed</h3>
+                    <p>Share your GPS location to find nearby providers.</p>
+                    <button class="btn btn-primary" onclick="requestLocationFromMiniApp()" style="margin-top:8px">📍 Share GPS Location</button>
+                    <div id="locationError" style="color:var(--color-danger);margin-top:6px;font-size:13px;display:none"></div>
+                  </div>
+                `;
+              }
+              if (actions) actions.innerHTML = '';
+            } else {
+              state.services = [];
+              renderSwipeContent();
+            }
+          })
+          .catch(() => {
+            state.services = [];
+            renderSwipeContent();
+          });
+      }
+
+      function prefetchNextCard() {
+        const current = state.services[state.currentIndex];
+        const query = buildDiscoveryQuery(
+          current ? { exclude_service_id: current.id } : {}
+        );
+        fetchApi('/discovery/swipe/' + query)
+          .then(res => {
+            if (res.provider_protection) {
+              state.usageInfo = res.provider_protection;
+              renderUsageBar(state.usageInfo);
+            }
+            if (res.success && res.card) {
+              state._swipeNextCard = res.card;
+            }
+          })
+          .catch(() => {});
+      }
+
+      function renderSwipeContent() {
+        const container = document.getElementById('swipeContent');
+        const actions = document.getElementById('swipeActions');
+        if (!container) return;
+
+        if (state.contactResult) {
+          renderContactResult(container, actions);
+          return;
+        }
+
+        if (state.services.length === 0 || state.currentIndex >= state.services.length) {
+          container.innerHTML = `
+            <div class="swipe-empty">
+              <div class="empty-icon">🎉</div>
+              <h3>You've seen everyone!</h3>
+              <p>No more providers in your area right now. Check back soon for new listings.</p>
+              <button class="btn btn-primary" onclick="window.app.loadSwipeServices(true)" style="margin-top:8px">🔄 Refresh</button>
+            </div>
+          `;
+          if (actions) actions.innerHTML = '';
+          return;
+        }
+
+        const svc = state.services[state.currentIndex];
+        renderSwipeCard(container, actions, svc);
+      }
+
+      function renderSwipeCard(container, actions, svc) {
+        const photos = [...(svc.photos || [])].sort((a, b) => a.order_index - b.order_index);
+        const prices = svc.prices || [];
+        const priceLabels = { half_day: 'Half Day', full_day: 'Full Day', night: 'Night' };
+        const locationText = svc.city_text
+          ? '📍 ' + escHtml(svc.city_text)
+          : '📍 GPS location';
+        const isVerified = serviceIsVerified(svc);
+        const isTested = serviceIsTested(svc);
+        const overlayClass = isVerified && isTested ? 'verified-tested-overlay'
+          : isVerified ? 'verified-overlay'
+          : isTested ? 'tested-overlay' : '';
+        const likesEmoji = getLikesBadge(svc && svc.likes_count);
+
+        let photoGallery = '';
+        if (photos.length > 0) {
+          const dots = photos.length > 1 ? `<div class="swipe-photo-dots" id="swipePhotoDots">${
+            photos.map((_, i) => `<span${i === 0 ? ' class="active"' : ''}></span>`).join('')
+          }</div>` : '';
+          const nav = photos.length > 1 ? `
+            <div class="swipe-photo-nav">
+              <button id="swipePhotoPrev" onclick="window.app.changeSwipePhoto(-1)" type="button">‹</button>
+              <button id="swipePhotoNext" onclick="window.app.changeSwipePhoto(1)" type="button">›</button>
+            </div>` : '';
+          photoGallery = `
+            <div class="swipe-card-image ${overlayClass}" id="swipeCardImage">
+              <div id="swipePhotoContainer" style="width:100%;height:100%;position:relative;">
+                ${photos.map((p, i) => `
+                  <div id="swipePhotoSlide${i}" style="position:absolute;inset:0;transition:opacity 0.25s;${i === 0 ? 'opacity:1' : 'opacity:0;pointer-events:none'}">
+                    ${renderImageOrPlaceholder(p)}
+                  </div>`).join('')}
+              </div>
+              <div class="swipe-card-verified-tag">
+                ${isVerified ? '<span class="tag-verified">✓ Verified</span>' : ''}
+                ${isTested ? '<span class="tag-tested">⭐ Tested</span>' : ''}
+              </div>
+              <div class="swipe-card-likes-badge">${likesEmoji || ('❤️ ' + (svc.likes_count || 0))}</div>
+              ${nav}
+              ${dots}
+            </div>`;
+        } else {
+          photoGallery = `<div class="swipe-card-image ${overlayClass}">${renderImageOrPlaceholder()}</div>`;
+        }
+
+        container.innerHTML = `
+          <div class="swipe-stack">
+            <div id="swipeCard" class="swipe-card" data-photo-index="0">
+              <div class="swipe-indicator" id="swipeIndicator">
+                <span class="like-badge">❤️</span>
+                <span class="nope-badge">❌</span>
+              </div>
+              ${photoGallery}
+                <div class="swipe-card-body">
+                <div class="provider-row">
+                  <span>${escHtml(svc.provider_name || 'Provider')}</span>
+                  <span class="swipe-likes">❤️ ${svc.likes_count || 0}</span>
+                </div>
+                <h2>${escHtml(svc.title)}</h2>
+                ${prices.length ? '<div class="price-table">' + prices.map(p =>
+                  '<div class="price-row"><span class="label">' + (priceLabels[p.price_type] || p.price_type) + '</span><span class="amount">' + p.amount + ' ETB</span></div>'
+                ).join('') + '</div>' : ''}
+                <div class="city-row">${locationText}</div>
+                <div id="contactStatusRow">${renderContactStatusRow(svc._contactStatus)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        if (svc._contactStatus) {
+          actions.innerHTML = `
+            <button class="btn btn-primary btn-continue" onclick="window.app.continueSwiping()">
+              Keep Swiping →
+            </button>
+          `;
+        } else if (svc.is_own) {
+          actions.innerHTML = `
+            <button class="btn btn-nope" id="swipePass" title="Pass" style="width:auto;border-radius:var(--radius-card);padding:0 28px;font-size:16px">⏭️ Pass</button>
+          `;
+          document.getElementById('swipePass').addEventListener('click', () => swipeAction('pass'));
+        } else {
+          actions.innerHTML = `
+            <button class="btn btn-nope" id="swipeNope" title="Skip">❌</button>
+            <button class="btn btn-like" id="swipeLike" title="Like">❤️</button>
+          `;
+
+          document.getElementById('swipeNope').addEventListener('click', () => swipeAction('dislike'));
+          document.getElementById('swipeLike').addEventListener('click', () => swipeAction('like'));
+          initSwipeCard();
+        }
+      }
+
+      function renderContactResult(container, actions) {
+        const cr = state.contactResult;
+        let icon, title, msg, contactHtml = '';
+
+        switch (cr.status) {
+          case 'provider_pending':
+            icon = '⏳'; title = 'Request Sent!';
+            msg = 'Your request has been sent to the provider. Waiting for their response.';
+            break;
+          case 'pending':
+            icon = '⏳'; title = 'Under Review';
+            msg = 'Your request is being reviewed by the admin team.';
+            break;
+          case 'approved':
+          case 'auto_approved':
+            icon = '✅'; title = 'Contact Approved!';
+            msg = 'The provider\'s contact information is now available.';
+            if (cr.contact_value && cr.contact_value.type === 'both') {
+              contactHtml = '<div class="contact-value" style="display:flex;flex-direction:column;gap:6px">'
+                + '<span>📞 ' + escHtml(cr.contact_value.phone) + '</span>'
+                + '<a href="' + escHtml(cr.contact_value.telegram.url) + '" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none;font-weight:700">💬 ' + escHtml(cr.contact_value.telegram.display) + ' →</a>'
+                + '</div>';
+            } else if (cr.contact_value) {
+              contactHtml = '<div class="contact-value">📞 ' + escHtml(cr.contact_value.display || cr.contact_value) + '</div>';
+            }
+            break;
+          case 'rejected':
+          case 'provider_rejected':
+            icon = '❌'; title = 'Not Available';
+            msg = 'This provider is not available. Try another service.';
+            break;
+          default:
+            icon = '✅'; title = 'Done!';
+            msg = 'Action completed successfully.';
+        }
+
+        container.innerHTML = `
+          <div class="contact-result">
+            <div class="result-icon">${icon}</div>
+            <h3>${title}</h3>
+            <div class="result-msg">${msg}</div>
+            ${contactHtml}
+          </div>
+        `;
+
+        actions.innerHTML = `
+          <button class="btn btn-primary btn-continue" onclick="window.app.continueSwiping()">
+            Keep Swiping →
+          </button>
+        `;
+      }
+
+      function changeSwipePhoto(dir) {
+        const card = document.getElementById('swipeCard');
+        if (!card) return;
+        const total = card.querySelectorAll('[id^="swipePhotoSlide"]').length;
+        if (total < 2) return;
+        let idx = parseInt(card.dataset.photoIndex || '0', 10);
+        const oldIdx = idx;
+        idx = (idx + dir + total) % total;
+        card.dataset.photoIndex = idx;
+        const prev = document.getElementById('swipePhotoSlide' + oldIdx);
+        const next = document.getElementById('swipePhotoSlide' + idx);
+        if (prev) { prev.style.opacity = '0'; prev.style.pointerEvents = 'none'; }
+        if (next) { next.style.opacity = '1'; next.style.pointerEvents = 'auto'; }
+        const dots = document.getElementById('swipePhotoDots');
+        if (dots) {
+          const spans = dots.querySelectorAll('span');
+          spans.forEach((s, i) => s.classList.toggle('active', i === idx));
+        }
+      }
+
+      function initSwipeCard() {
+        const card = document.getElementById('swipeCard');
+        if (!card) return;
+
+        let startX = 0, startY = 0, currentX = 0, isDragging = false;
+        const threshold = 120;
+
+        function onStart(x, y, target) {
+          if (target && (target.closest('#swipePhotoPrev') || target.closest('#swipePhotoNext'))) {
+            return;
+          }
+          startX = x; startY = y; currentX = 0;
+          isDragging = true;
+          card.classList.add('dragging');
+          const ind = document.getElementById('swipeIndicator');
+          if (ind) ind.classList.remove('show');
+        }
+
+        function onMove(x, y) {
+          if (!isDragging) return;
+          currentX = x - startX;
+          const rot = Math.max(-30, Math.min(30, currentX / 10));
+          card.style.transform = `translateX(${currentX}px) rotate(${rot}deg)`;
+          const ind = document.getElementById('swipeIndicator');
+          if (ind) {
+            ind.classList.add('show');
+            const like = ind.querySelector('.like-badge');
+            const nope = ind.querySelector('.nope-badge');
+            if (like && nope) {
+              like.style.opacity = Math.max(0, Math.min(1, currentX / 150));
+              nope.style.opacity = Math.max(0, Math.min(1, -currentX / 150));
+            }
+          }
+        }
+
+        function onEnd() {
+          if (!isDragging) return;
+          isDragging = false;
+          card.classList.remove('dragging');
+          const ind = document.getElementById('swipeIndicator');
+          if (ind) ind.classList.remove('show');
+
+          if (Math.abs(currentX) > threshold) {
+            const dir = currentX > 0 ? 'right' : 'left';
+            const tx = currentX > 0 ? window.innerWidth + 100 : -(window.innerWidth + 100);
+            card.style.transition = 'transform 0.35s ease';
+            card.style.transform = `translateX(${tx}px) rotate(${currentX > 0 ? 30 : -30}deg)`;
+            setTimeout(() => {
+              if (dir === 'right') swipeAction('like');
+              else swipeAction('dislike');
+            }, 350);
+          } else {
+            card.style.transition = 'transform 0.3s ease';
+            card.style.transform = 'translateX(0) rotate(0)';
+            setTimeout(() => { card.style.transition = ''; }, 300);
+          }
+        }
+
+        card.addEventListener('touchstart', e => { const t = e.touches[0]; onStart(t.clientX, t.clientY, e.target); }, { passive: true });
+        card.addEventListener('touchmove', e => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }, { passive: true });
+        card.addEventListener('touchend', onEnd, { passive: true });
+        card.addEventListener('mousedown', e => { onStart(e.clientX, e.clientY, e.target); });
+        document.addEventListener('mousemove', e => { onMove(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', onEnd);
+      }
+
+      function swipeAction(action) {
+        const svc = state.services[state.currentIndex];
+        if (!svc || state._swipeBusy) return;
+        state._swipeBusy = true;
+
+        if (action === 'like') {
+          fetchApi('/swipe/like/', { method: 'POST', body: JSON.stringify({ service_id: svc.id }) })
+            .then(res => {
+              state._swipeBusy = false;
+              if (res.provider_protection) {
+                state.usageInfo = res.provider_protection;
+                renderUsageBar(state.usageInfo);
+              }
+              if (res.success) {
+                const cr = res.contact_request || {};
+                svc.likes_count = Number(svc.likes_count || 0) + 1;
+                const providerContact = contactValueFromRequest(cr);
+                svc._contactStatus = {
+                  status: cr.status || 'approved',
+                  contact_value: providerContact ? buildTelegramContactLink(providerContact, svc.title) : null,
+                };
+                renderSwipeContent();
+                showContactResultToast(svc._contactStatus);
+              } else if (res.error && res.error.includes('Providers cannot send')) {
+                showToast('👋 Browse freely! As a provider, explore other listings. Contact requests are for customers.', 'info');
+                advanceToNextCard();
+              } else if (res.error && res.provider_protection) {
+                showUsageLimitModal(res.provider_protection);
+                advanceToNextCard();
+              } else {
+                showToast(res.error || 'Failed to like', 'error');
+                advanceToNextCard();
+              }
+            })
+            .catch(() => {
+              state._swipeBusy = false;
+              showToast('Network error', 'error');
+              advanceToNextCard();
+            });
+        } else if (action === 'dislike') {
+          fetchApi('/swipe/dislike/', { method: 'POST', body: JSON.stringify({ service_id: svc.id }) })
+            .then(res => {
+              state._swipeBusy = false;
+              if (!res.success && res.error) showToast(res.error, 'error');
+            })
+            .catch(() => { state._swipeBusy = false; });
+          advanceToNextCard();
+        } else if (action === 'pass') {
+          fetchApi('/swipe/dislike/', { method: 'POST', body: JSON.stringify({ service_id: svc.id }) })
+            .catch(() => {});
+          const card = document.getElementById('swipeCard');
+          if (card) {
+            card.style.transition = 'transform 0.35s ease';
+            card.style.transform = `translateX(-${window.innerWidth + 100}px) rotate(-30deg)`;
+            setTimeout(() => {
+              state._swipeBusy = false;
+              advanceToNextCard();
+            }, 350);
+          } else {
+            state._swipeBusy = false;
+            advanceToNextCard();
+          }
+        }
+      }
+
+      function showContactResultToast(cr) {
+        switch (cr.status) {
+          case 'provider_pending':
+            showToast('✅ Request sent! Waiting for provider response.', 'success');
+            break;
+          case 'approved':
+          case 'auto_approved':
+            showToast('✅ Contact approved!', 'success');
+            break;
+          case 'rejected':
+          case 'provider_rejected':
+            showToast('❌ Not available. Try another provider.', 'error');
+            break;
+          default:
+            showToast('✅ Done!', 'success');
+        }
+      }
+
+      function advanceToNextCard() {
+        if (state._swipeNextCard) {
+          state.services = [state._swipeNextCard];
+          state.currentIndex = 0;
+          state._swipeNextCard = null;
+          renderSwipeContent();
+          prefetchNextCard();
+        } else {
+          loadSwipeServices(false);
+        }
+      }
+
+      function continueSwiping() {
+        state.contactResult = null;
+        state._swipeBusy = false;
+        advanceToNextCard();
+      }
+
+      /* ── card detail ──────────────────────────── */
+      function showCardDetail(svc) {
+        state._detailService = svc;
+        state._detailPhotoIndex = 0;
+        state._detailContactStatus = null;
+
+        const photos = [...(svc.photos || [])].sort((a, b) => a.order_index - b.order_index);
+        const hasPhotos = photos.length > 0;
+        const prices = svc.prices || [];
+        const priceLabels = { half_day: 'Half Day', full_day: 'Full Day', night: 'Night' };
+
+        renderApp(`
+          <div class="screen active">
+            <div class="header">
+              <button class="header-back" onclick="window.app.backFromDetail()">‹</button>
+              <span class="header-title">${escHtml(svc.title)}</span>
+            </div>
+            <div class="scroll-content detail-scroll">
+              <div class="detail-carousel" id="detailCarousel">
+                <div class="detail-carousel-inner" id="detailCarouselInner">
+                  ${hasPhotos ? photos.map(p => `
+                  <div class="detail-carousel-slide">
+                    ${renderImageOrPlaceholder(p)}
+                  </div>`).join('') : `
+                  <div class="detail-carousel-slide">
+                    <div class="no-photo" style="display:flex">📷</div>
+                  </div>`}
+                </div>
+                ${hasPhotos && photos.length > 1 ? `
+                <div class="detail-carousel-dots" id="detailCarouselDots">
+                  ${photos.map((_, i) => `<span class="dot${i === 0 ? ' active' : ''}"></span>`).join('')}
+                </div>` : ''}
+              </div>
+              <div class="detail-body">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <span class="detail-category">${svc.category ? escHtml(svc.category.name) : ''}</span>
+                  <span class="detail-likes">❤️ ${svc.likes_count || 0}</span>
+                </div>
+                <div class="detail-provider">
+                  ${escHtml(svc.provider_name || 'Provider')}
+                  ${renderProviderBadges(svc)}
+                </div>
+                <h1>${escHtml(svc.title)}</h1>
+                ${prices.length ? `
+                <div>
+                  <div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-bottom:8px;">PRICING</div>
+                  <div class="detail-price-table">
+                    ${prices.map(p => `
+                    <div class="detail-price-row">
+                      <span class="label">${priceLabels[p.price_type] || p.price_type}</span>
+                      <span class="amount">${p.amount} ETB</span>
+                    </div>`).join('')}
+                  </div>
+                </div>` : ''}
+                <div>
+                  <div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-bottom:6px;">DESCRIPTION</div>
+                  <div class="detail-description">${escHtml(svc.description || 'No description provided.')}</div>
+                </div>
+                <div class="detail-location">📍 ${svc.city_text ? escHtml(svc.city_text) : 'GPS location'}</div>
+                <div id="detailContactStatus"></div>
+              </div>
+            </div>
+            <div class="detail-actions">
+              <button class="btn btn-secondary" id="detailSaveBtn">💾 Save for Later</button>
+              <button class="btn btn-primary" id="detailContactBtn">💬 Contact Provider</button>
+              <button class="btn btn-amber" id="detailLikeBtn">❤️ Like</button>
+            </div>
+          </div>
+        `);
+
+        initDetailCarousel(photos);
+        bindDetailButtons(svc);
+        loadDetailContactStatus(svc.id);
+      }
+
+      function backFromDetail() {
+        const previous = window.app && window.app._prevScreen && window.app._prevScreen !== 'card_detail'
+          ? window.app._prevScreen
+          : 'swipe';
+        navigate(previous);
+      }
+
+      function initDetailCarousel(photos) {
+        if (!photos || photos.length <= 1) return;
+        const inner = document.getElementById('detailCarouselInner');
+        const dots = document.querySelectorAll('#detailCarouselDots .dot');
+        if (!inner) return;
+        let startX = 0, currentX = 0, isDragging = false, idx = 0;
+
+        function goTo(index) {
+          idx = Math.max(0, Math.min(index, photos.length - 1));
+          inner.style.transform = 'translateX(-' + (idx * 100) + '%)';
+          dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        }
+
+        inner.addEventListener('touchstart', e => {
+          startX = e.touches[0].clientX;
+          isDragging = true;
+          inner.classList.add('dragging');
+        }, { passive: true });
+
+        inner.addEventListener('touchmove', e => {
+          if (!isDragging) return;
+          currentX = e.touches[0].clientX - startX;
+          const base = -idx * inner.offsetWidth;
+          inner.style.transform = 'translateX(' + (base + currentX) + 'px)';
+        }, { passive: true });
+
+        inner.addEventListener('touchend', () => {
+          if (!isDragging) return;
+          isDragging = false;
+          inner.classList.remove('dragging');
+          if (Math.abs(currentX) > 60) {
+            goTo(currentX < 0 ? idx + 1 : idx - 1);
+          } else {
+            goTo(idx);
+          }
+          currentX = 0;
+        }, { passive: true });
+      }
+
+      function showLocationPromptInline() {
+        const container = document.getElementById('detailContactStatus');
+        if (!container) return;
+        const deepLink = getBotDeepLink('share_location');
+        container.innerHTML = `
+          <div class="location-inline-prompt">
+            <div>📍 Share your location to find nearby providers.</div>
+            <button class="btn btn-primary" onclick="requestLocationFromMiniApp()" style="margin-top:8px;width:100%">📍 Share GPS Location</button>
+            ${deepLink ? `<div style="margin-top:6px;font-size:13px"><a href="${escHtml(deepLink)}" target="_blank">Or open bot to share</a></div>` : ''}
+            <div id="locationError" style="color:var(--color-danger);margin-top:6px;font-size:13px;display:none"></div>
+          </div>
+        `;
+      }
+
+      function requestLocationFromMiniApp() {
+        requestLocationFromMiniAppAsync().then(function(result) {
+          if (result) sendCustomerLocation(result.latitude, result.longitude);
+        });
+      }
+
+      function requestLocationFromMiniAppAsync() {
+        return new Promise(function(resolve) {
+          if (tg && typeof tg.requestLocation === 'function') {
+            tg.onEvent('locationRequested', function onLocation(result) {
+              tg.offEvent('locationRequested', onLocation);
+              if (result && result.latitude && result.longitude) {
+                resolve({ latitude: result.latitude, longitude: result.longitude });
+              } else {
+                resolve(null);
+              }
+            });
+            tg.requestLocation();
+          } else if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              function(pos) { resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); },
+              function() { resolve(null); },
+              { enableHighAccuracy: true, timeout: 10000 }
+            );
+          } else {
+            resolve(null);
+          }
+        });
+      }
+
+      function sendCustomerLocation(lat, lon) {
+        const errorEl = document.getElementById('locationError');
+        return fetchApi('/profile/customer-location/', {
+          method: 'PATCH',
+          body: JSON.stringify({ latitude: lat, longitude: lon })
+        }).then(res => {
+          if (res.success) {
+            state.user = state.user || {};
+            state.user.has_customer_location = true;
+            const container = document.getElementById('detailContactStatus');
+            if (container) container.innerHTML = '<div style="padding:12px;color:var(--color-success);text-align:center">✅ Location saved! You can now contact providers.</div>';
+            return true;
+          } else {
+            if (errorEl) { errorEl.textContent = res.errors ? JSON.stringify(res.errors) : 'Failed to save location.'; errorEl.style.display = 'block'; }
+            return false;
+          }
+        }).catch(() => {
+          if (errorEl) { errorEl.textContent = 'Network error. Try again.'; errorEl.style.display = 'block'; }
+          return false;
+        });
+      }
+
+      function customerHasLocation() {
+        return fetchApi('/me/')
+          .then(res => {
+            if (res.success && res.user) {
+              state.user = res.user;
+              return Boolean(res.user.has_customer_location);
+            }
+            return Boolean(state.user && state.user.has_customer_location);
+          })
+          .catch(() => Boolean(state.user && state.user.has_customer_location));
+      }
+
+      function openBudgetSheet(svc) {
+        closeBudgetSheet();
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'budgetSheetBackdrop';
+        backdrop.className = 'budget-sheet-backdrop';
+        backdrop.innerHTML = `
+          <div class="budget-sheet" role="dialog" aria-modal="true" aria-labelledby="budgetSheetTitle">
+            <div class="budget-sheet-header">
+              <div class="budget-sheet-title" id="budgetSheetTitle">Set your budget for this service.</div>
+              <button class="budget-sheet-close" id="budgetSheetClose" type="button" aria-label="Close">×</button>
+            </div>
+            <label class="budget-field-label" for="budgetInput">Budget in ETB</label>
+            <input class="budget-input" id="budgetInput" type="number" min="1000" step="50" inputmode="numeric" value="1000">
+            <div class="budget-average" id="budgetAverage">${renderAverageLine(svc, {}, true)}</div>
+            <div class="budget-error" id="budgetError"></div>
+            <div class="budget-sheet-actions">
+              <button class="btn btn-secondary" id="budgetCancelBtn" type="button">Cancel</button>
+              <button class="btn btn-primary" id="budgetConfirmBtn" type="button">Contact Provider</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(backdrop);
+        requestAnimationFrame(() => backdrop.classList.add('show'));
+
+        const averageEl = document.getElementById('budgetAverage');
+        const errorEl = document.getElementById('budgetError');
+        const input = document.getElementById('budgetInput');
+        const confirm = document.getElementById('budgetConfirmBtn');
+
+        document.getElementById('budgetSheetClose').addEventListener('click', closeBudgetSheet);
+        document.getElementById('budgetCancelBtn').addEventListener('click', closeBudgetSheet);
+        backdrop.addEventListener('click', event => {
+          if (event.target === backdrop) closeBudgetSheet();
+        });
+
+        const categoryId = svc.category ? svc.category.id : null;
+        if (categoryId) {
+          fetchApi('/services/category-avg-price/?category_id=' + encodeURIComponent(categoryId))
+            .then(res => {
+              if (res.success && averageEl) {
+                averageEl.textContent = renderAverageLine(svc, res.averages || {}, false);
+              } else if (averageEl) {
+                averageEl.textContent = renderAverageLine(svc, {}, false);
+              }
+            })
+            .catch(() => {
+              if (averageEl) averageEl.textContent = renderAverageLine(svc, {}, false);
+            });
+        } else if (averageEl) {
+          averageEl.textContent = renderAverageLine(svc, {}, false);
+        }
+
+        confirm.addEventListener('click', () => {
+          const budget = Number(input.value || 0);
+          if (budget < 1000) {
+            errorEl.textContent = 'Minimum budget is 1000 ETB.';
+            input.focus();
+            return;
+          }
+          errorEl.textContent = '';
+          confirm.disabled = true;
+          submitContactRequest(svc)
+            .finally(() => {
+              confirm.disabled = false;
+            });
+        });
+        input.focus();
+        input.select();
+      }
+
+      function submitContactRequest(svc) {
+        return fetchApi('/contact-request/', { method: 'POST', body: JSON.stringify({ service_id: svc.id }) })
+          .then(res => {
+            if (res.success) {
+              closeBudgetSheet();
+              const cr = res.contact_request || {};
+              updateDetailContactStatus(cr.status, contactValueFromRequest(cr));
+              showToast('Contact request sent!', 'success');
+            } else if (res.error === 'LOCATION_REQUIRED') {
+              closeBudgetSheet();
+              showLocationPromptInline();
+            } else {
+              showToast(res.error || 'Request failed', 'error');
+            }
+          });
+      }
+
+      function bindDetailButtons(svc) {
+        document.getElementById('detailSaveBtn').addEventListener('click', () => {
+          fetchApi('/swipe/save/', { method: 'POST', body: JSON.stringify({ service_id: svc.id }) })
+            .then(res => {
+              if (res.success) showToast('Service saved!', 'success');
+              else showToast(res.error || 'Failed to save', 'error');
+            });
+        });
+
+        document.getElementById('detailContactBtn').addEventListener('click', () => {
+          customerHasLocation()
+            .then(hasLocation => {
+              if (!hasLocation) {
+                showLocationPromptInline();
+                return;
+              }
+              openBudgetSheet(svc);
+            });
+        });
+
+        document.getElementById('detailLikeBtn').addEventListener('click', () => {
+          fetchApi('/swipe/like/', { method: 'POST', body: JSON.stringify({ service_id: svc.id }) })
+            .then(res => {
+              if (res.provider_protection) {
+                state.usageInfo = res.provider_protection;
+              }
+              if (res.success) {
+                const cr = res.contact_request || {};
+                const status = cr.status || 'approved';
+                const contactValue = contactValueFromRequest(cr);
+                updateDetailContactStatus(status, contactValue);
+                showContactResultToast({ status });
+              } else if (res.provider_protection) {
+                showUsageLimitModal(res.provider_protection);
+              } else {
+                showToast(res.error || 'Failed to like', 'error');
+              }
+            });
+        });
+      }
+
+      function loadDetailContactStatus(serviceId) {
+        fetchApi('/contact-request/status/?service_id=' + serviceId)
+          .then(res => {
+            if (res.success && res.contact_request) {
+              const cr = res.contact_request;
+              const contactValue = contactValueFromRequest(cr);
+              updateDetailContactStatus(cr.status, contactValue);
+            }
+          })
+          .catch(() => {});
+      }
+
+      function updateDetailContactStatus(status, contactValue) {
+        const container = document.getElementById('detailContactStatus');
+        if (!container) return;
+        const contactStatus = contactStatusLabel(status, contactValue);
+        if (contactStatus.label) {
+          container.innerHTML = '<div class="detail-contact-status ' + contactStatus.cls + '">' + escHtml(contactStatus.label) + '</div>';
+        }
+      }
+
+      /* ── render: saved ──────────────────────────── */
+      function renderSaved() {
+        renderApp(`
+          <div class="screen active">
+            <div class="header">
+              <button class="header-back" onclick="window.app.navigate('home')">‹</button>
+              <span class="header-title">Saved Services</span>
+            </div>
+            <div class="scroll-content" id="savedContent">
+              <div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div></div>
+            </div>
+          </div>
+        `);
+        loadSavedServices();
+      }
+
+      function loadSavedServices() {
+        fetchApi('/swipe/saved/')
+          .then(res => {
+            const container = document.getElementById('savedContent');
+            if (!container) return;
+            if (res.success && res.services && res.services.length) {
+              let html = '<div class="saved-list">';
+              res.services.forEach(svc => {
+                const photos = [...(svc.photos || [])].sort((a, b) => a.order_index - b.order_index);
+                const prices = svc.prices || [];
+                const priceMin = prices.length ? Math.min(...prices.map(p => parseFloat(p.amount) || 0)) : null;
+                html += `
+                  <div class="saved-card" data-id="${svc.id}">
+                    <div class="saved-card-image">
+                      ${renderImageOrPlaceholder(photos[0])}
+                    </div>
+                    <div class="saved-card-body">
+                      <div class="saved-provider">
+                        ${escHtml(svc.provider_name || 'Provider')}
+                        ${renderProviderBadges(svc)}
+                      </div>
+                      <h4>${escHtml(svc.title)}</h4>
+                      ${svc.category ? '<div class="saved-category">' + escHtml(svc.category.name) + '</div>' : ''}
+                      <div class="saved-bottom">
+                        <span class="saved-price">${priceMin !== null ? 'From ' + priceMin + ' ETB' : ''}</span>
+                        ${svc.saved_at ? '<span class="saved-at">Saved ' + timeAgo(svc.saved_at) + '</span>' : '<span></span>'}
+                      </div>
+                      <div class="saved-card-actions">
+                        <span class="saved-card-likes">❤️ ${svc.likes_count || 0}</span>
+                        <button class="saved-card-remove" data-sid="${svc.id}" title="Remove">❌ Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              });
+              html += '</div>';
+              container.innerHTML = html;
+              container.querySelectorAll('.saved-card-remove').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                  e.stopPropagation();
+                  const sid = parseInt(this.dataset.sid);
+                  fetchApi('/swipe/save/' + sid + '/', { method: 'DELETE' })
+                    .then(res => {
+                      if (res.success) { showToast('Removed', 'success'); loadSavedServices(); }
+                      else showToast('Failed to remove', 'error');
+                    });
+                });
+              });
+              container.querySelectorAll('.saved-card').forEach(card => {
+                card.addEventListener('click', function () {
+                  const id = parseInt(this.dataset.id);
+                  const svc = res.services.find(s => s.id === id);
+                  if (svc) showCardDetail(svc);
+                });
+              });
+            } else {
+              container.innerHTML = '<div class="saved-empty"><div class="empty-icon">💾</div><p>No saved services. Like or save services to add them here.</p><button class="btn btn-primary" style="margin-top:12px" onclick="window.app.navigate(\'swipe\')">Discover Services</button></div>';
+            }
+          })
+          .catch(() => {
+            const container = document.getElementById('savedContent');
+            if (container) container.innerHTML = '<div class="saved-empty"><div class="empty-icon">⚠️</div><p>Failed to load saved services</p></div>';
+          });
+      }
+
+      /* ── render: my service ──────────────────────── */
+      function renderMyService() {
+        renderApp(`
+          <div class="screen active">
+            <div class="header">
+              <button class="header-back" onclick="window.app.navigate('home')">‹</button>
+              <span class="header-title">My Service</span>
+            </div>
+            <div class="scroll-content" id="myServiceContent">
+              <div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div></div>
+            </div>
+          </div>
+        `);
+        if (!userCanManageService()) {
+          const container = document.getElementById('myServiceContent');
+          const deepLink = getBotDeepLink('create_service');
+          if (container) {
+            container.innerHTML = `
+              <div class="my-service-empty">
+                <div class="empty-icon">📋</div>
+                <p>My Service is available for providers.</p>
+                <p style="font-size:13px;margin-top:4px">Use the bot to register a provider service.</p>
+                ${deepLink ? `<a class="btn btn-primary" style="margin-top:16px" href="${escHtml(deepLink)}" target="_blank">Open Bot</a>` : ''}
+              </div>
+            `;
+          }
+          return;
+        }
+        loadMyService();
+      }
+
+      function renderMyServiceStatusBlock(s) {
+        const status = String(s.approval_status || '').toLowerCase();
+        if (status === 'approved') {
+          const isOn = s.visibility_status === 'on';
+          return `
+            <div class="visibility-control">
+              <div class="visibility-copy">
+                <strong>Visibility</strong>
+                <span>${isOn ? 'Your approved service is visible in discovery.' : 'Your approved service is hidden from discovery.'}</span>
+              </div>
+              <button class="visibility-toggle ${isOn ? 'on' : 'off'}" id="visibilityToggleBtn" type="button" aria-pressed="${isOn ? 'true' : 'false'}">
+                <span class="visibility-dot"></span>
+                <span>${isOn ? 'On' : 'Off'}</span>
+              </button>
+            </div>
+            <div class="service-state-note approved">Approved services can be turned on or off anytime.</div>
+          `;
+        }
+        if (status === 'rejected') {
+          const deepLink = getBotDeepLink('create_service');
+          return `
+            <div class="service-state-note rejected">Rejected</div>
+            <div class="rejection-box">
+              <strong>Rejection reason</strong>
+              <p>${escHtml(s.rejection_reason || 'No reason provided.')}</p>
+              ${deepLink ? `<a class="btn btn-primary" href="${escHtml(deepLink)}" target="_blank">📝 Register Again</a>` : '<button class="btn btn-secondary" disabled>📝 Register Again</button>'}
+            </div>
+          `;
+        }
+        return '<div class="service-state-note pending">Your service is being reviewed by admin.</div>';
+      }
+
+      function updateProfileVisibility(nextStatus) {
+        const toggle = document.getElementById('visibilityToggleBtn');
+        if (toggle) toggle.disabled = true;
+        return fetchApi('/profile/visibility/', {
+          method: 'POST',
+          body: JSON.stringify({ visibility_status: nextStatus }),
+        })
+          .then(res => {
+            if (res.success) {
+              if (state.myService) state.myService.visibility_status = res.visibility_status || nextStatus;
+              showToast('Visibility updated', 'success');
+              loadMyService();
+            } else {
+              showToast(res.error || 'Failed to update visibility', 'error');
+            }
+          })
+          .catch(() => {
+            showToast('Network error', 'error');
+          })
+          .finally(() => {
+            if (toggle) toggle.disabled = false;
+          });
+      }
+
+      function loadMyService() {
+        fetchApi('/service/me/')
+          .then(res => {
+            const container = document.getElementById('myServiceContent');
+            if (!container) return;
+            if (res.success && res.service) {
+              state.myService = res.service;
+              const s = res.service;
+              const prices = s.prices || [];
+              const photos = [...(s.photos || [])].sort((a, b) => a.order_index - b.order_index);
+              const statusClass = (s.approval_status || '').toLowerCase();
+              container.innerHTML = `
+                <div class="my-service-card">
+                  <div class="my-service-image">
+                    ${renderImageOrPlaceholder(photos[0])}
+                  </div>
+                  <div class="my-service-body">
+                    <div class="my-service-title-row">
+                      <h2>${escHtml(s.title)}</h2>
+                      <span class="status-badge ${statusClass}">${serviceStatusLabel(s.approval_status)}</span>
+                    </div>
+                    ${renderMyServiceStatusBlock(s)}
+                    <div class="divider"></div>
+                    <div class="my-service-fields">
+                      <div><span class="label">Category</span><div class="value">${s.category ? escHtml(s.category.name) : '-'}</div></div>
+                      <div><span class="label">Location</span><div class="value">${escHtml(s.city_text || 'GPS location')}</div></div>
+                      ${prices.length ? '<div><span class="label">Pricing</span>' + prices.map(p => '<div class="value">' + formatPrice(p) + '</div>').join('') + '</div>' : ''}
+                      <div><span class="label">Description</span><div class="value">${escHtml(s.description || '-')}</div></div>
+                      <div><span class="label">Photos</span><div class="value">${photos.length}</div></div>
+                    </div>
+                  </div>
+                </div>
+              `;
+              const toggle = document.getElementById('visibilityToggleBtn');
+              if (toggle) {
+                toggle.addEventListener('click', () => {
+                  const nextStatus = s.visibility_status === 'on' ? 'off' : 'on';
+                  updateProfileVisibility(nextStatus);
+                });
+              }
+            } else {
+              const deepLink = getBotDeepLink('create_service');
+              container.innerHTML = `
+                <div class="my-service-empty">
+                  <div class="empty-icon">🏪</div>
+                  <p>You haven't created a service yet.</p>
+                  <p style="font-size:13px;margin-top:4px">Use the bot to register as a provider and create your service.</p>
+                  ${deepLink ? `<a class="btn btn-primary" style="margin-top:16px" href="${escHtml(deepLink)}" target="_blank">Open Bot</a>` : '<button class="btn btn-secondary" style="margin-top:16px" disabled>Open Bot</button>'}
+                </div>
+              `;
+            }
+          })
+          .catch(() => {
+            const container = document.getElementById('myServiceContent');
+            if (container) container.innerHTML = '<div class="my-service-empty"><div class="empty-icon">⚠️</div><p>Failed to load your service</p></div>';
+          });
+      }
+
+      /* ── navigation ────────────────────────────── */
+      function navigate(screen) {
+        state.screen = screen;
+        window.app._prevScreen = screen;
+
+        const screens = ['loading', 'policy_gate', 'home', 'swipe', 'card_detail', 'saved', 'my_service'];
+        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+
+        switch (screen) {
+          case 'loading': renderLoading(); break;
+          case 'policy_gate': renderPolicyGate(); break;
+          case 'home': renderHome(); break;
+          case 'swipe':
+            renderSwipe();
+            break;
+          case 'saved': renderSaved(); break;
+          case 'my_service': renderMyService(); break;
+          default: renderHome();
+        }
+      }
+
+      /* ── utilities ────────────────────────────── */
+      function escHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        const now = Date.now();
+        const then = new Date(dateStr).getTime();
+        const diff = now - then;
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return mins + 'm ago';
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return hrs + 'h ago';
+        const days = Math.floor(hrs / 24);
+        if (days < 30) return days + 'd ago';
+        return new Date(dateStr).toLocaleDateString();
+      }
+
+      /* ── init ───────────────────────────────────── */
+      async function init() {
+        renderLoading();
+
+        const initData = tg ? tg.initData : null;
+        if (!initData) {
+          renderError('This app must be opened from Telegram.');
+          return;
+        }
+
+        const authRes = await fetchApi('/auth/telegram/', {
+          method: 'POST',
+          body: JSON.stringify({ init_data: initData }),
+        });
+
+        if (!authRes.success) {
+          renderError(authRes.error || 'Authentication failed.');
+          return;
+        }
+
+        state.token = authRes.token;
+        state.user = authRes.user;
+
+        const meRes = await fetchApi('/me/');
+        if (meRes.success && meRes.user) {
+          state.user = meRes.user;
+        }
+
+        if (!state.user.policy_accepted_at) {
+          navigate('policy_gate');
+          return;
+        }
+
+        const catRes = await fetchApi('/services/categories/');
+        if (catRes.success && catRes.categories) {
+          state.categories = catRes.categories;
+        }
+
+        if (!state.user.has_customer_location) {
+          const loc = await requestLocationFromMiniAppAsync();
+          if (loc) {
+            await sendCustomerLocation(loc.latitude, loc.longitude);
+          }
+        }
+
+        const categoryParam = parseInt(qs('category_id'), 10);
+        if (categoryParam > 0) {
+          state.filters.category_id = categoryParam;
+        }
+
+        const screenParam = qs('screen') || 'home';
+        const validScreens = {
+          'my-service': 'my_service',
+          'saved': 'saved',
+          'discovery': 'swipe',
+          'swipe': 'swipe',
+          'home': 'home',
+        };
+        const targetScreen = validScreens[screenParam] || 'home';
+        navigate(targetScreen);
+      }
+
+      document.getElementById('usageModalBackdrop').addEventListener('click', function (e) {
+        if (e.target === this) closeUsageLimitModal();
+      });
+      document.getElementById('usageModalCloseBtn').addEventListener('click', closeUsageLimitModal);
+
+      /* ── exports ────────────────────────────────── */
+      window.app = {
+        navigate: navigate,
+        loadSwipeServices: loadSwipeServices,
+        continueSwiping: continueSwiping,
+        showCardDetail: showCardDetail,
+        backFromDetail: backFromDetail,
+        changeSwipePhoto: changeSwipePhoto,
+        _prevScreen: 'home',
+        state: state,
+      };
+
+      document.addEventListener('DOMContentLoaded', init);
+      if (document.readyState !== 'loading') init();
+    })();
+  </script>
+</body>
+</html>

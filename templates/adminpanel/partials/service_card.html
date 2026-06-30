@@ -1,0 +1,84 @@
+<div class="item searchable">
+    {% if show_photos %}
+        {% with photos=service.photos.all %}
+            {% if photos %}
+                <div class="admin-photo-carousel" data-service-id="{{ service.id }}">
+                    <div class="admin-photo-carousel-inner">
+                        {% for photo in photos %}
+                            <div class="admin-photo-slide{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter0 }}">
+                                <img src="/api/service/photo/{{ photo.id }}/"
+                                     alt="Photo #{{ photo.order_index }}"
+                                     loading="lazy"
+                                     onerror="this.parentElement.innerHTML='<div class=\'admin-photo-placeholder\'>No image</div>'">
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% if photos|length > 1 %}
+                        <button class="admin-photo-nav admin-photo-prev" type="button" onclick="adminPhotoNav(this, -1)">&#8249;</button>
+                        <button class="admin-photo-nav admin-photo-next" type="button" onclick="adminPhotoNav(this, 1)">&#8250;</button>
+                        <div class="admin-photo-dots">
+                            {% for photo in photos %}
+                                <span class="admin-photo-dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter0 }}"></span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
+    <h3>{{ service.title }}</h3>
+    <span class="badge {{ service.approval_status }}">{{ service.get_approval_status_display }}</span>
+    <div class="meta">
+        <span>Service ID: {{ service.id }}</span>
+        <span>Provider: {{ service.provider.get_display_name }} ({{ service.provider.telegram_id }})</span>
+        <span>Username: @{{ service.provider.telegram_username|default:"not_set" }}</span>
+        <span>Phone: {{ service.provider.phone_number|default:"not_set" }}</span>
+        {% if service.provider.secondary_phone_number %}
+            <span>Secondary Phone: {{ service.provider.secondary_phone_number }}</span>
+        {% endif %}
+        <span>Category: {{ service.category.name }}</span>
+        <span>Visibility: {{ service.get_visibility_status_display }}</span>
+        <span>Location:
+          {% if service.city_text %}
+            {{ service.city_text }}
+            {% if service.latitude and service.longitude %}
+              ({{ service.latitude|floatformat:4 }}, {{ service.longitude|floatformat:4 }})
+            {% endif %}
+          {% elif service.latitude and service.longitude %}
+            {{ service.latitude|floatformat:4 }}, {{ service.longitude|floatformat:4 }}
+          {% else %}
+            {{ service.get_location_source_display }}
+          {% endif %}
+        </span>
+        <span>Created: {{ service.created_at }}</span>
+    </div>
+    <div class="actions">
+        {% if service.approval_status == service_status.PENDING %}
+            <form method="post"
+                  class="service-approve-form"
+                  action="{% url 'adminpanel-dashboard-service-action' service.id 'approve' %}"
+                  data-id="{{ service.id }}">
+                {% csrf_token %}
+                <button class="action approve" type="submit" aria-label="Approve service {{ service.title }}">Approve</button>
+            </form>
+            <form method="post"
+                  class="service-reject-form"
+                  action="{% url 'adminpanel-dashboard-service-action' service.id 'reject' %}"
+                  data-id="{{ service.id }}">
+                {% csrf_token %}
+                <button class="action reject" type="submit" aria-label="Reject service {{ service.title }}">Reject</button>
+            </form>
+        {% endif %}
+        <span class="toggle-wrap">
+            <span class="toggle-label">Hidden</span>
+            <label class="toggle-switch">
+                <input type="checkbox" class="toggle-checkbox"
+                       aria-label="Toggle admin-forced hidden for {{ service.title }}"
+                       data-endpoint="/api/admin/service/{{ service.id }}/toggle-admin-visibility/"
+                       data-field="admin_forced_hidden"
+                       {% if service.admin_forced_hidden %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+            </label>
+        </span>
+    </div>
+</div>

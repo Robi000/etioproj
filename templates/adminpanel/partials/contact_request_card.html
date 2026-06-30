@@ -1,0 +1,34 @@
+<div class="item searchable">
+    <h3>{{ request_item.service.title|default:"Selected service" }}</h3>
+    <span class="badge {{ request_item.status }}">{{ request_item.get_status_display }}</span>
+    <div class="meta">
+        <span>Request ID: {{ request_item.id }}</span>
+        <span>Customer: {{ request_item.customer.get_display_name }} ({{ request_item.customer.telegram_id }})</span>
+        <span>Provider: {{ request_item.provider.get_display_name }} ({{ request_item.provider.telegram_id }})</span>
+        <span>Category: {{ request_item.service.category.name|default:"Unknown" }}</span>
+        <span>Created: {{ request_item.created_at }}</span>
+        {% if request_item.approved_at %}
+            <span>Approved: {{ request_item.approved_at }}</span>
+        {% endif %}
+    </div>
+    <div class="actions">
+        {% if request_item.status == contact_status.PENDING %}
+            <form method="post"
+                  class="contact-approve-form"
+                  action="{% url 'adminpanel-dashboard-contact-action' request_item.id 'approve' %}"
+                  data-id="{{ request_item.id }}">
+                {% csrf_token %}
+                <button class="action approve" type="submit" aria-label="Approve contact request {{ request_item.id }}">Approve</button>
+            </form>
+        {% endif %}
+        {% if request_item.status == contact_status.PENDING or request_item.status == contact_status.PROVIDER_PENDING %}
+            <form method="post"
+                  class="contact-reject-form"
+                  action="{% url 'adminpanel-dashboard-contact-action' request_item.id 'reject' %}"
+                  data-id="{{ request_item.id }}">
+                {% csrf_token %}
+                <button class="action reject" type="submit" aria-label="Reject contact request {{ request_item.id }}">Reject</button>
+            </form>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,22 @@
+# Tasks - Membership Admission Voting Integration
+
+- [ ] Create Admission Voting Service (`src/services/admissionVotingService.js`)
+- [ ] Create Admission Voting Query Hooks (`src/hooks/useAdmissionVoting.js`)
+- [ ] Create Admission Voting Page Stylesheet (`src/pages/AdmissionVoting.css`)
+- [ ] Create Admission Voting Page (`src/pages/AdmissionVoting.jsx`)
+  - [ ] Implement Access Security Check & Denial View
+  - [ ] Implement Debounced Search, Status Filtering, and Sort Controls
+  - [ ] Implement Responsive Table (Desktop) / Cards (Mobile) Layout
+  - [ ] Implement Custom Popover Detail Layer (Outside Click & Esc dismiss)
+  - [ ] Implement Voting Form with decision and comment input
+  - [ ] Handle Immutable / Resolved voting responses
+- [ ] Update Layout Sidebar Nav Dynamic Builder (`src/layouts/AppLayout.jsx`)
+- [ ] Register Routes (`src/App.jsx`)
+- [ ] Build & Test Verification
+  - [ ] Confirm access control rules
+  - [ ] Confirm search, debouncing, and pagination
+  - [ ] Confirm popover behaviors (escape, click away)
+  - [ ] Confirm successful vote submit and list refresh
+  - [ ] Confirm duplicate vote error handling
+  - [ ] Confirm zero production build compilation errors
+- [ ] Update Walkthrough (`walkthrough.md`)

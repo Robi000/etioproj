@@ -1,0 +1,1202 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Marketplace Admin Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        :root {
+            --bg: #f0f2f5;
+            --bg-gradient: linear-gradient(135deg, #f0f2f5 0%, #e8ecf1 100%);
+            --panel: #ffffff;
+            --ink: #0f1724;
+            --muted: #6b7280;
+            --line: #e2e5ea;
+            --blue: #2563eb;
+            --blue-light: #dbeafe;
+            --blue-glow: rgba(37, 99, 235, 0.18);
+            --green: #059669;
+            --green-light: #d1fae5;
+            --green-glow: rgba(5, 150, 105, 0.18);
+            --red: #dc2626;
+            --red-light: #fee2e2;
+            --red-glow: rgba(220, 38, 38, 0.15);
+            --amber: #d97706;
+            --amber-light: #fef3c7;
+            --amber-glow: rgba(217, 119, 6, 0.15);
+            --shadow-sm: 0 1px 3px rgba(15, 23, 36, 0.06), 0 1px 2px rgba(15, 23, 36, 0.04);
+            --shadow-md: 0 4px 12px rgba(15, 23, 36, 0.07), 0 2px 4px rgba(15, 23, 36, 0.04);
+            --shadow-lg: 0 8px 30px rgba(15, 23, 36, 0.09), 0 3px 8px rgba(15, 23, 36, 0.05);
+            --shadow-xl: 0 20px 60px rgba(15, 23, 36, 0.12), 0 6px 16px rgba(15, 23, 36, 0.06);
+            --radius: 10px;
+            --radius-lg: 14px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--ink);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .shell {
+            width: min(1440px, 100%);
+            margin: 0 auto;
+            padding: 28px 24px;
+            animation: fadeSlideUp 0.5s ease-out;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: center;
+            margin-bottom: 24px;
+            animation: fadeSlideUp 0.5s ease-out 0.05s both;
+        }
+        h1 {
+            margin: 0;
+            font-size: clamp(28px, 4vw, 44px);
+            letter-spacing: -0.03em;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--ink) 0%, #374151 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 15px;
+            font-weight: 400;
+        }
+        .search {
+            min-width: min(360px, 100%);
+            border: 1.5px solid var(--line);
+            background: var(--panel);
+            border-radius: var(--radius-lg);
+            padding: 12px 16px;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        .search:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 4px var(--blue-glow), var(--shadow-sm);
+        }
+        .search::placeholder { color: #9ca3af; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(140px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            cursor: default;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            opacity: 0;
+            transition: var(--transition);
+        }
+        .stat:nth-child(1)::before { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+        .stat:nth-child(2)::before { background: linear-gradient(90deg, #059669, #34d399); }
+        .stat:nth-child(3)::before { background: linear-gradient(90deg, #dc2626, #f87171); }
+        .stat:nth-child(4)::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .stat:nth-child(5)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .stat:nth-child(6)::before { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+        .stat:nth-child(7)::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+        .stat:nth-child(8)::before { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+        .stat:nth-child(9)::before { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+        .stat:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            border-color: transparent;
+        }
+        .stat:hover::before { opacity: 1; }
+        .stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+        }
+        .stat strong {
+            display: block;
+            margin-top: 10px;
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            animation: countUp 0.4s ease-out;
+        }
+        .messages {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .message {
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            background: var(--blue-light);
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            font-size: 14px;
+            animation: fadeSlideUp 0.3s ease-out;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            margin-bottom: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--line) transparent;
+        }
+        .tabs::-webkit-scrollbar { height: 4px; }
+        .tabs::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+        .tab {
+            border: 1.5px solid var(--line);
+            background: var(--panel);
+            color: var(--muted);
+            border-radius: var(--radius-lg);
+            padding: 11px 18px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        .tab:hover {
+            border-color: #c4c8d0;
+            color: var(--ink);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .tab.active {
+            border-color: var(--blue);
+            color: var(--blue);
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            box-shadow: 0 4px 14px var(--blue-glow);
+            font-weight: 600;
+        }
+        .tab.active:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--blue-glow);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .section {
+            display: none;
+            animation: fadeSlideUp 0.35s ease-out;
+        }
+        .section.active {
+            display: block;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-md);
+            min-width: 0;
+            transition: var(--transition);
+        }
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+        .card h2 {
+            margin: 0 0 14px;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h2::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--line) 0%, transparent 100%);
+        }
+        .item {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            background: #ffffff;
+            transition: var(--transition);
+            position: relative;
+        }
+        .item:hover {
+            border-color: #c4c8d0;
+            box-shadow: 0 4px 16px rgba(15, 23, 36, 0.06);
+            transform: translateY(-2px);
+        }
+        .item:last-child { margin-bottom: 0; }
+        .item h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .meta {
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .meta span {
+            transition: var(--transition);
+        }
+        .item:hover .meta span { color: #4b5563; }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            border-radius: 999px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            margin: 8px 0;
+            border: 1px solid var(--line);
+            background: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            transition: var(--transition);
+        }
+        .item:hover .badge { transform: scale(1.04); }
+        .badge.pending, .badge.provider_pending {
+            color: var(--amber);
+            background: var(--amber-light);
+            border-color: #fde68a;
+            box-shadow: 0 1px 4px var(--amber-glow);
+        }
+        .badge.approved, .badge.auto_approved {
+            color: var(--green);
+            background: var(--green-light);
+            border-color: #a7f3d0;
+            box-shadow: 0 1px 4px var(--green-glow);
+        }
+        .badge.rejected, .badge.provider_rejected {
+            color: var(--red);
+            background: var(--red-light);
+            border-color: #fecaca;
+            box-shadow: 0 1px 4px var(--red-glow);
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+        button.action {
+            border: 0;
+            border-radius: var(--radius);
+            padding: 10px 16px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            font-family: inherit;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        button.action::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        button.action:hover { transform: translateY(-2px); }
+        button.action:active { transform: translateY(0); }
+        button.action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .approve {
+            background: linear-gradient(135deg, #059669, #10b981);
+            box-shadow: 0 3px 10px var(--green-glow);
+        }
+        .approve:hover { box-shadow: 0 5px 18px var(--green-glow); }
+        .reject {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            box-shadow: 0 3px 10px var(--red-glow);
+        }
+        .reject:hover { box-shadow: 0 5px 18px var(--red-glow); }
+        .empty {
+            color: var(--muted);
+            padding: 24px 18px;
+            border: 1.5px dashed #d1d5db;
+            border-radius: var(--radius);
+            background: #f9fafb;
+            font-size: 14px;
+            text-align: center;
+        }
+        dialog {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg) !important;
+            padding: 28px !important;
+            max-width: 480px !important;
+            width: 90% !important;
+            box-shadow: var(--shadow-xl);
+            animation: scaleIn 0.25s ease-out;
+        }
+        dialog::backdrop {
+            background: rgba(15, 23, 36, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        .action-error {
+            color: var(--red);
+            font-size: 13px;
+            margin-top: 8px;
+            font-weight: 500;
+            animation: fadeSlideUp 0.2s ease-out;
+        }
+        .action-success {
+            color: var(--green);
+            font-size: 13px;
+            margin-top: 8px;
+            font-weight: 600;
+            animation: fadeSlideUp 0.2s ease-out;
+        }
+        .toggle-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #d1d5db;
+            border-radius: 24px;
+            transition: var(--transition);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: var(--transition);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            box-shadow: 0 0 10px var(--blue-glow);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(18px);
+            box-shadow: 0 1px 6px rgba(37, 99, 235, 0.3);
+        }
+        .toggle-switch input:focus-visible + .toggle-slider {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .toggle-label {
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .item:hover .toggle-label { color: #4b5563; }
+        .admin-photo-carousel {
+            position: relative; width: 100%; aspect-ratio: 16/9;
+            background: #e5e7eb; border-radius: 8px; overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .admin-photo-carousel-inner { position: relative; width: 100%; height: 100%; }
+        .admin-photo-slide {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+        }
+        .admin-photo-slide.active { opacity: 1; pointer-events: auto; }
+        .admin-photo-slide img { width: 100%; height: 100%; object-fit: cover; }
+        .admin-photo-placeholder {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            color: #9ca3af; font-size: 14px; font-weight: 500;
+        }
+        .admin-photo-nav {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            z-index: 2; border: none; cursor: pointer;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(0,0,0,0.35); color: #fff;
+            font-size: 18px; line-height: 28px; text-align: center;
+            transition: background 0.2s; padding: 0;
+        }
+        .admin-photo-nav:hover { background: rgba(0,0,0,0.55); }
+        .admin-photo-prev { left: 6px; }
+        .admin-photo-next { right: 6px; }
+        .admin-photo-dots {
+            position: absolute; bottom: 6px; left: 0; right: 0;
+            display: flex; justify-content: center; gap: 5px; z-index: 2;
+        }
+        .admin-photo-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: rgba(255,255,255,0.4); transition: all 0.2s;
+        }
+        .admin-photo-dot.active { background: #fff; width: 16px; border-radius: 3px; }
+        .pagination {
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 0 4px; flex-wrap: wrap;
+        }
+        .page-link {
+            padding: 6px 12px; border-radius: 6px;
+            background: var(--blue-glow); color: var(--blue);
+            text-decoration: none; font-size: 13px; font-weight: 500;
+            transition: background 0.2s;
+        }
+        .page-link:hover { background: rgba(37,99,235,0.28); }
+        .page-info { font-size: 13px; color: var(--muted); margin: 0 4px; }
+        @media (max-width: 1100px) {
+            .stats { grid-template-columns: repeat(3, 1fr); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 720px) {
+            .shell { padding: 16px; }
+            .topbar { align-items: stretch; flex-direction: column; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat { padding: 14px 16px; }
+            .stat strong { font-size: 24px; }
+            .tab { padding: 9px 14px; font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <header class="topbar">
+        <div>
+            <h1>Marketplace Admin</h1>
+            <p class="subtitle">Review provider availability, approve contact sharing, and monitor the system.</p>
+            {% if admin_tg_user %}
+                <p style="margin:4px 0 0;font-size:13px;color:var(--muted);">
+                    Logged in as <strong>{{ admin_tg_user.get_display_name }}</strong>
+                    {% if admin_tg_user.role == admin_tg_user.Role.ADMIN %}
+                        &middot; TG Admin
+                    {% else %}
+                        &middot; Staff
+                    {% endif %}
+                    &middot; <a href="{% url 'adminpanel-logout' %}" style="color:var(--red);">Logout</a>
+                </p>
+            {% endif %}
+        </div>
+        <input class="search" id="searchBox" type="search" placeholder="Search requests, users, services...">
+    </header>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="stats">
+        <div class="stat"><span>Pending Requests</span><strong>{{ stats.pending_requests }}</strong></div>
+        <div class="stat"><span>Approved Requests</span><strong>{{ stats.approved_requests }}</strong></div>
+        <div class="stat"><span>Rejected Requests</span><strong>{{ stats.rejected_requests }}</strong></div>
+        <div class="stat"><span>Providers</span><strong>{{ stats.service_providers }}</strong></div>
+        <div class="stat"><span>Customers</span><strong>{{ stats.customers }}</strong></div>
+        <div class="stat"><span>Pending Services</span><strong>{{ stats.pending_services }}</strong></div>
+        <div class="stat"><span>👤 Total Users</span><strong>{{ funnel.total_started }}</strong></div>
+        <div class="stat"><span>✅ Policy Passed</span><strong>{{ funnel.total_policy_passed }}</strong></div>
+        <div class="stat"><span>⏳ Mid-Registration</span><strong>{{ funnel.total_mid_registration }}</strong></div>
+    </section>
+
+    <nav class="tabs" aria-label="Dashboard sections">
+        <button class="tab active" data-tab="requests" aria-label="Show contact requests tab">Requests</button>
+        <button class="tab" data-tab="services" aria-label="Show services tab">Services</button>
+        <button class="tab" data-tab="users" aria-label="Show users tab">Users</button>
+        <button class="tab" data-tab="settings" aria-label="Show settings tab">Settings</button>
+        <button class="tab" data-tab="reminders" aria-label="Show reminders tab">⏳ Reminders</button>
+        <button class="tab" data-tab="photos" aria-label="Show photo changes tab">📸 Photo Changes</button>
+    </nav>
+
+    <section class="section active" id="requests">
+        <div class="grid">
+            <div class="card">
+                <h2>Pending Requests</h2>
+                {% for request_item in contact_requests %}
+                    {% if request_item.status == contact_status.PROVIDER_PENDING or request_item.status == contact_status.PENDING %}
+                        {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
+                    {% endif %}
+                {% empty %}
+                    <div class="empty">No requests yet.</div>
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h2>Approved Requests</h2>
+                {% for request_item in contact_requests %}
+                    {% if request_item.status == contact_status.APPROVED or request_item.status == contact_status.AUTO_APPROVED %}
+                        {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
+                    {% endif %}
+                {% empty %}
+                    <div class="empty">No approved requests yet.</div>
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h2>Rejected Requests</h2>
+                {% for request_item in contact_requests %}
+                    {% if request_item.status == contact_status.REJECTED or request_item.status == contact_status.PROVIDER_REJECTED %}
+                        {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
+                    {% endif %}
+                {% empty %}
+                    <div class="empty">No rejected requests yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="services">
+        <div class="grid">
+            <div class="card">
+                <h2>Pending Services</h2>
+                {% for service in pending_services %}
+                    {% include "adminpanel/partials/service_card.html" with service=service show_photos=True %}
+                {% empty %}
+                    <div class="empty">No pending services yet.</div>
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h2>Approved Services</h2>
+                {% for service in approved_services_page %}
+                    {% include "adminpanel/partials/service_card.html" with service=service show_photos=False %}
+                {% empty %}
+                    <div class="empty">No approved services yet.</div>
+                {% endfor %}
+                {% if approved_services_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if approved_services_page.has_previous %}
+                            <a href="?approved_page=1" class="page-link">&laquo; first</a>
+                            <a href="?approved_page={{ approved_services_page.previous_page_number }}" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ approved_services_page.number }} of {{ approved_services_page.paginator.num_pages }}</span>
+                        {% if approved_services_page.has_next %}
+                            <a href="?approved_page={{ approved_services_page.next_page_number }}" class="page-link">next &rsaquo;</a>
+                            <a href="?approved_page={{ approved_services_page.paginator.num_pages }}" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card">
+                <h2>Rejected or Suspended</h2>
+                {% for service in rejected_services %}
+                    {% include "adminpanel/partials/service_card.html" with service=service show_photos=False %}
+                {% empty %}
+                    <div class="empty">No rejected services yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="users">
+        <div class="grid">
+            <div class="card">
+                <h2>Service Providers</h2>
+                {% for user in providers %}
+                    <div class="item searchable">
+                        <h3>{{ user.get_display_name }}</h3>
+                        <div class="meta">
+                            <span>Telegram ID: {{ user.telegram_id }}</span>
+                            <span>Username: @{{ user.telegram_username|default:"not_set" }}</span>
+                            <span>Phone: {{ user.phone_number|default:"not_set" }}</span>
+                            <span>Banned: {{ user.is_banned }}</span>
+                        </div>
+                        <div class="actions">
+                            <span class="toggle-wrap">
+                                <span class="toggle-label">Verified</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="toggle-checkbox"
+                                           aria-label="Toggle verified badge for {{ user.get_display_name }}"
+                                           data-endpoint="/api/admin/provider/{{ user.id }}/toggle-verified/"
+                                           data-field="is_verified"
+                                           {% if user.is_verified %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </span>
+                            <span class="toggle-wrap">
+                                <span class="toggle-label">Tested</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="toggle-checkbox"
+                                           aria-label="Toggle tested badge for {{ user.get_display_name }}"
+                                           data-endpoint="/api/admin/provider/{{ user.id }}/toggle-tested/"
+                                           data-field="admin_tested_badge"
+                                           {% if user.admin_tested_badge %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="empty">No providers yet.</div>
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h2>Customers</h2>
+                {% for user in customers %}
+                    <div class="item searchable">
+                        <h3>{{ user.get_display_name }}</h3>
+                        <div class="meta">
+                            <span>Telegram ID: {{ user.telegram_id }}</span>
+                            <span>Username: @{{ user.telegram_username|default:"not_set" }}</span>
+                            <span>Policy: {{ user.policy_version|default:"not accepted" }}</span>
+                            <span>Banned: {{ user.is_banned }}</span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="empty">No customers yet.</div>
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h2>System Statistics</h2>
+                <div class="item">
+                    <div class="meta">
+                        <span>Auto approve contacts: {{ settings.auto_approve_requests }}</span>
+                        <span>Swipe reset days: {{ settings.reset_days }}</span>
+                        <span>Default radius: {{ settings.default_radius }} km</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="settings">
+        <div class="card">
+            <h2>Current System Settings</h2>
+            <div class="item">
+                <div class="meta">
+                    <span>Reset days: {{ settings.reset_days }}</span>
+                    <span>Default search radius: {{ settings.default_radius }} km</span>
+                    <span>Updated: {{ settings.updated_at }}</span>
+                </div>
+                <div class="actions">
+                    <span class="toggle-wrap">
+                        <span class="toggle-label">Auto-approve contacts</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" class="toggle-checkbox"
+                                   aria-label="Toggle auto-approve contacts setting"
+                                   data-endpoint="/api/admin/settings/"
+                                   data-field="auto_approve_requests"
+                                   {% if settings.auto_approve_requests %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="section" id="reminders">
+        <div class="card" style="max-width:100%;overflow-x:auto;">
+            <h2>Users Needing Registration Reminders</h2>
+            <p style="color:var(--muted);font-size:14px;margin:0 0 12px;">
+                Users who started registration 2–3 days ago and haven't completed it yet.
+            </p>
+            <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;">
+                <button id="sendAllRemindersBtn" class="action" style="background:var(--blue);border:0;border-radius:8px;padding:9px 14px;color:#fff;cursor:pointer;font-weight:700;" aria-label="Send reminders to all users in this list">
+                    📨 Send All Reminders
+                </button>
+                <span id="massReminderStatus" style="font-size:13px;color:var(--muted);"></span>
+            </div>
+            {% if reminder_users %}
+                    <thead>
+                        <tr style="background:var(--bg);border-bottom:2px solid var(--line);">
+                            <th style="padding:10px 8px;text-align:left;">Telegram ID</th>
+                            <th style="padding:10px 8px;text-align:left;">Name</th>
+                            <th style="padding:10px 8px;text-align:left;">Username</th>
+                            <th style="padding:10px 8px;text-align:left;">State</th>
+                            <th style="padding:10px 8px;text-align:left;">Last Updated</th>
+                            <th style="padding:10px 8px;text-align:left;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in reminder_users %}
+                            <tr style="border-bottom:1px solid var(--line);">
+                                <td style="padding:10px 8px;">{{ user.telegram_id }}</td>
+                                <td style="padding:10px 8px;">{{ user.first_name }}</td>
+                                <td style="padding:10px 8px;">@{{ user.telegram_username }}</td>
+                                <td style="padding:10px 8px;">
+                                    <span class="badge">{{ user.session_state }}</span>
+                                </td>
+                                <td style="padding:10px 8px;">{{ user.session_updated_at }}</td>
+                                <td style="padding:10px 8px;">
+                                    <button class="action send-reminder-btn" style="background:var(--blue);border:0;border-radius:8px;padding:7px 12px;color:#fff;cursor:pointer;font-weight:700;font-size:13px;"
+                                            data-user-id="{{ user.id }}">
+                                        📨 Send Reminder
+                                    </button>
+                                    <span class="reminder-status" style="font-size:12px;margin-left:6px;"></span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty">No users need reminders right now.</div>
+            {% endif %}
+        </div>
+    </section>
+    <section class="section" id="photos">
+        <div class="grid">
+            <div class="card">
+                <h2>📸 Pending Photo Changes</h2>
+                {% for change in photo_changes %}
+                    <div class="item photo-change-item" data-id="{{ change.id }}">
+                        <h3>
+                            {{ change.service.provider.get_display_name }}
+                            {% if change.service.provider.telegram_username %}
+                                <span style="font-weight:400;color:var(--muted);font-size:13px;">@{{ change.service.provider.telegram_username }}</span>
+                            {% endif %}
+                        </h3>
+                        <div class="meta">
+                            <span>Service: {{ change.service.title }}</span>
+                            <span>Category: {{ change.service.category.name }}</span>
+                            <span>Photo #{{ change.order_index }}</span>
+                            <span>Requested: {{ change.created_at|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        <div class="actions">
+                            <button class="action photo-approve-btn" style="background:var(--green);border:0;border-radius:8px;padding:7px 12px;color:#fff;cursor:pointer;font-weight:700;font-size:13px;">
+                                ✅ Approve
+                            </button>
+                            <button class="action photo-reject-btn" style="background:var(--red);border:0;border-radius:8px;padding:7px 12px;color:#fff;cursor:pointer;font-weight:700;font-size:13px;">
+                                ❌ Reject
+                            </button>
+                            <span class="photo-change-status" style="font-size:12px;margin-left:6px;"></span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="empty">No pending photo changes.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    <!-- Rejection reason dialog for services -->
+    <dialog id="rejectDialog" aria-labelledby="rejectDialogTitle" style="border:1px solid var(--line);border-radius:8px;padding:24px;max-width:480px;width:90%;">
+        <form method="dialog">
+            <h3 id="rejectDialogTitle" style="margin:0 0 8px;">Reject Service</h3>
+            <p style="color:var(--muted);font-size:14px;margin:0 0 12px;">Provide a reason for rejection (minimum 10 characters):</p>
+            <label for="rejectionReason" style="display:block;font-size:13px;color:var(--muted);margin-bottom:4px;">Rejection reason</label>
+            <textarea id="rejectionReason" rows="4" maxlength="1000" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px;">
+                <span id="rejectCharCount">0 / 1000</span>
+                <span id="rejectMinHint">min 10 chars</span>
+            </div>
+            <div id="rejectDialogError" style="color:var(--red);font-size:13px;margin-top:6px;display:none;"></div>
+            <div class="actions" style="margin-top:14px;">
+                <button type="button" id="cancelRejectBtn" class="action" aria-label="Cancel rejection" style="background:var(--muted);border:0;border-radius:8px;padding:9px 12px;color:#fff;cursor:pointer;font-weight:700;">Cancel</button>
+                <button type="button" id="confirmRejectBtn" class="action reject" disabled aria-label="Confirm rejection" style="border:0;border-radius:8px;padding:9px 12px;color:#fff;cursor:pointer;font-weight:700;background:var(--red);">Confirm Reject</button>
+            </div>
+        </form>
+    </dialog>
+</main>
+
+<script>
+    const tabs = document.querySelectorAll(".tab");
+    const sections = document.querySelectorAll(".section");
+    tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+            tabs.forEach((item) => item.classList.remove("active"));
+            sections.forEach((section) => section.classList.remove("active"));
+            tab.classList.add("active");
+            document.getElementById(tab.dataset.tab).classList.add("active");
+        });
+    });
+
+    const searchBox = document.getElementById("searchBox");
+    searchBox.addEventListener("input", () => {
+        const query = searchBox.value.trim().toLowerCase();
+        document.querySelectorAll(".searchable").forEach((item) => {
+            item.style.display = item.innerText.toLowerCase().includes(query) ? "" : "none";
+        });
+    });
+
+    /* ---- Static dialog for service rejection reason ---- */
+    const rejectDialog = document.getElementById('rejectDialog');
+    const rejectionReason = document.getElementById('rejectionReason');
+    const rejectDialogError = document.getElementById('rejectDialogError');
+    const confirmRejectBtn = document.getElementById('confirmRejectBtn');
+    const cancelRejectBtn = document.getElementById('cancelRejectBtn');
+    let pendingRejectForm = null;
+    let pendingRejectCard = null;
+
+    const rejectCharCount = document.getElementById('rejectCharCount');
+    rejectionReason.addEventListener('input', function () {
+        const len = this.value.length;
+        rejectCharCount.textContent = len + ' / 1000';
+        confirmRejectBtn.disabled = this.value.trim().length < 10 || len > 1000;
+    });
+    cancelRejectBtn.addEventListener('click', function () {
+        rejectDialog.close();
+        pendingRejectForm = null;
+        pendingRejectCard = null;
+    });
+    confirmRejectBtn.addEventListener('click', function () {
+        const raw = rejectionReason.value;
+        if (raw.length > 1000) {
+            rejectDialogError.textContent = 'Rejection reason must not exceed 1000 characters.';
+            rejectDialogError.style.display = 'block';
+            return;
+        }
+        const reason = raw.trim();
+        if (reason.length < 10) {
+            rejectDialogError.textContent = 'Rejection reason must be at least 10 characters.';
+            rejectDialogError.style.display = 'block';
+            return;
+        }
+        rejectDialogError.style.display = 'none';
+        confirmRejectBtn.disabled = true;
+        if (pendingRejectForm && pendingRejectCard) {
+            submitAction('/api/admin/service/reject/', {
+                service_id: parseInt(pendingRejectForm.dataset.id),
+                rejection_reason: reason,
+            }, pendingRejectCard, pendingRejectForm);
+        }
+        rejectDialog.close();
+        rejectionReason.value = '';
+        pendingRejectForm = null;
+        pendingRejectCard = null;
+    });
+
+    /* ---- Shared headers ---- */
+    function getCookie(name) {
+        let value = null;
+        if (document.cookie && document.cookie !== '') {
+            for (const part of document.cookie.split(';')) {
+                const c = part.trim();
+                if (c.startsWith(name + '=')) {
+                    value = decodeURIComponent(c.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return value;
+    }
+
+    const ajaxHeaders = { 'Content-Type': 'application/json' };
+    {% if admin_token %}
+    ajaxHeaders['Authorization'] = 'Token {{ admin_token }}';
+    {% else %}
+    ajaxHeaders['X-CSRFToken'] = getCookie('csrftoken');
+    {% endif %}
+
+    function showError(card, msg) {
+        const old = card.querySelector('.action-error');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.className = 'action-error';
+        el.textContent = msg;
+        const target = card.querySelector('.actions') || card;
+        target.after(el);
+    }
+
+    function updateCardAfterAction(card, isApprove) {
+        const label = isApprove ? 'Approved' : 'Rejected';
+        const cls = isApprove ? 'approved' : 'rejected';
+        const badge = card.querySelector('.badge');
+        badge.textContent = label;
+        badge.className = 'badge ' + cls;
+
+        const actions = card.querySelector('.actions');
+        if (actions) {
+            const msg = document.createElement('div');
+            msg.className = 'action-success';
+            msg.textContent = '\u2713 ' + label;
+            actions.replaceWith(msg);
+        }
+    }
+
+    function removeCard(card) {
+        card.style.transition = 'opacity 0.3s';
+        card.style.opacity = '0';
+        setTimeout(function () { card.remove(); }, 300);
+    }
+
+    function submitAction(endpoint, data, card, form) {
+        fetch(endpoint, { method: 'POST', headers: ajaxHeaders, body: JSON.stringify(data) })
+            .then(function (r) { return r.json(); })
+            .then(function (result) {
+                if (result.success) {
+                    if (form.classList.contains('service-reject-form')) {
+                        removeCard(card);
+                    } else {
+                        const isApprove = form.classList.contains('service-approve-form') || form.classList.contains('contact-approve-form');
+                        updateCardAfterAction(card, isApprove);
+                    }
+                } else {
+                    showError(card, result.error || 'Action failed.');
+                }
+            })
+            .catch(function () { showError(card, 'Network error. Please try again.'); });
+    }
+
+    /* ---- Send All Reminders ---- */
+    document.body.addEventListener('click', function (event) {
+        var btn = event.target.closest('#sendAllRemindersBtn');
+        if (!btn) return;
+
+        var statusEl = document.getElementById('massReminderStatus');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        statusEl.textContent = '';
+
+        fetch('/api/admin/send-mass-reminders/', {
+            method: 'POST',
+            headers: ajaxHeaders,
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (result) {
+            if (result.success) {
+                statusEl.textContent = 'Sent: ' + result.sent_count + ', Failed: ' + result.failed_count;
+                statusEl.style.color = 'var(--green)';
+                btn.disabled = false;
+                btn.textContent = '\uD83D\uDCE8 Send All Reminders';
+            } else {
+                statusEl.textContent = 'Failed: ' + (result.error || 'Unknown error');
+                statusEl.style.color = 'var(--red)';
+                btn.disabled = false;
+                btn.textContent = '\uD83D\uDCE8 Send All Reminders';
+            }
+        })
+        .catch(function () {
+            statusEl.textContent = 'Network error';
+            statusEl.style.color = 'var(--red)';
+            btn.disabled = false;
+            btn.textContent = '\uD83D\uDCE8 Send All Reminders';
+        });
+    });
+
+    /* ---- Toggle switches ---- */
+    document.body.addEventListener('change', function (event) {
+        var checkbox = event.target;
+        if (!checkbox.classList.contains('toggle-checkbox')) return;
+
+        var endpoint = checkbox.dataset.endpoint;
+        var field = checkbox.dataset.field;
+        var newValue = checkbox.checked;
+        var url, method, body;
+
+        if (endpoint.indexOf('/api/admin/settings/') !== -1) {
+            url = endpoint;
+            method = 'PATCH';
+            body = {};
+            body[field] = newValue;
+        } else {
+            url = endpoint;
+            method = 'POST';
+            body = null;
+        }
+
+        fetch(url, {
+            method: method,
+            headers: ajaxHeaders,
+            body: body ? JSON.stringify(body) : null,
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (result) {
+            if (!result.success) {
+                checkbox.checked = !newValue;
+                showError(checkbox.closest('.item') || checkbox.closest('.card'), result.error || 'Toggle failed.');
+            }
+        })
+        .catch(function () {
+            checkbox.checked = !newValue;
+            showError(checkbox.closest('.item') || checkbox.closest('.card'), 'Network error. Please try again.');
+        });
+    });
+
+    /* ---- Send Registration Reminder ---- */
+    document.body.addEventListener('click', function (event) {
+        var btn = event.target.closest('.send-reminder-btn');
+        if (!btn) return;
+
+        var userId = parseInt(btn.dataset.userId);
+        var statusEl = btn.parentElement.querySelector('.reminder-status');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        statusEl.textContent = '';
+
+        fetch('/api/admin/send-registration-reminder/', {
+            method: 'POST',
+            headers: ajaxHeaders,
+            body: JSON.stringify({ telegram_user_id: userId }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (result) {
+            if (result.success) {
+                statusEl.textContent = '\u2713 Sent';
+                statusEl.style.color = 'var(--green)';
+            } else {
+                statusEl.textContent = 'Failed: ' + (result.error || 'Unknown error');
+                statusEl.style.color = 'var(--red)';
+                btn.disabled = false;
+                btn.textContent = '\uD83D\uDCE8 Send Reminder';
+            }
+        })
+        .catch(function () {
+            statusEl.textContent = 'Network error';
+            statusEl.style.color = 'var(--red)';
+            btn.disabled = false;
+            btn.textContent = '\uD83D\uDCE8 Send Reminder';
+        });
+    });
+
+    /* ---- Event delegation: intercept approve/reject forms ---- */
+    document.body.addEventListener('submit', function (event) {
+        const form = event.target;
+        if (!form.classList.contains('contact-approve-form') &&
+            !form.classList.contains('contact-reject-form') &&
+            !form.classList.contains('service-approve-form') &&
+            !form.classList.contains('service-reject-form')) return;
+
+        event.preventDefault();
+        const card = form.closest('.item');
+        if (!card) return;
+        const oldErr = card.querySelector('.action-error');
+        if (oldErr) oldErr.remove();
+        const oldOk = card.querySelector('.action-success');
+        if (oldOk) oldOk.remove();
+
+        const id = parseInt(form.dataset.id);
+
+        if (form.classList.contains('service-approve-form')) {
+            submitAction('/api/admin/service/approve/', { service_id: id }, card, form);
+        } else if (form.classList.contains('service-reject-form')) {
+            pendingRejectForm = form;
+            pendingRejectCard = card;
+            rejectionReason.value = '';
+            rejectDialogError.style.display = 'none';
+            confirmRejectBtn.disabled = true;
+            rejectDialog.showModal();
+        } else if (form.classList.contains('contact-approve-form')) {
+            submitAction('/api/admin/contact/approve/', { contact_request_id: id }, card, form);
+        } else if (form.classList.contains('contact-reject-form')) {
+            submitAction('/api/admin/contact/reject/', { contact_request_id: id }, card, form);
+        }
+    });
+
+    /* ---- Photo Change approve/reject ---- */
+    document.body.addEventListener('click', function (event) {
+        var btn = event.target.closest('.photo-approve-btn, .photo-reject-btn');
+        if (!btn) return;
+
+        var item = btn.closest('.photo-change-item');
+        if (!item) return;
+
+        var changeId = parseInt(item.dataset.id);
+        var isApprove = btn.classList.contains('photo-approve-btn');
+        var endpoint = '/api/admin/photo-change/' + changeId + '/' + (isApprove ? 'approve' : 'reject') + '/';
+        var statusEl = item.querySelector('.photo-change-status');
+
+        btn.disabled = true;
+        statusEl.textContent = 'Processing...';
+        statusEl.style.color = 'var(--muted)';
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: ajaxHeaders,
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (result) {
+            if (result.success) {
+                statusEl.textContent = '\u2713 ' + (isApprove ? 'Approved' : 'Rejected');
+                statusEl.style.color = 'var(--green)';
+                setTimeout(function () { removeCard(item); }, 500);
+            } else {
+                statusEl.textContent = 'Failed: ' + (result.error || 'Action failed.');
+                statusEl.style.color = 'var(--red)';
+                btn.disabled = false;
+            }
+        })
+        .catch(function () {
+            statusEl.textContent = 'Network error.';
+            statusEl.style.color = 'var(--red)';
+            btn.disabled = false;
+        });
+    });
+
+    /* ---- Admin photo carousel ---- */
+    window.adminPhotoNav = function(btn, dir) {
+        var carousel = btn.closest('.admin-photo-carousel');
+        var slides = carousel.querySelectorAll('.admin-photo-slide');
+        var dots = carousel.querySelectorAll('.admin-photo-dot');
+        var current = -1;
+        slides.forEach(function(s, i) { if (s.classList.contains('active')) current = i; });
+        if (current === -1) current = 0;
+        var next = current + dir;
+        if (next < 0) next = slides.length - 1;
+        if (next >= slides.length) next = 0;
+        slides.forEach(function(s) { s.classList.remove('active'); });
+        slides[next].classList.add('active');
+        dots.forEach(function(d) { d.classList.remove('active'); });
+        if (dots[next]) dots[next].classList.add('active');
+    };
+</script>
+</body>
+</html>
