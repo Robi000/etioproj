@@ -26,6 +26,8 @@ ACTIVE_CONTACT_STATUSES = {
     ContactRequest.Status.AUTO_APPROVED,
 }
 
+CONTACT_APPROVAL_VALID_HOURS = 48
+
 
 @dataclass(frozen=True)
 class ContactRequestWorkflowResult:
@@ -37,12 +39,17 @@ def get_existing_active_contact_request(
     customer: TelegramUser,
     provider: TelegramUser,
 ) -> ContactRequest | None:
+    cutoff = timezone.now() - timedelta(hours=CONTACT_APPROVAL_VALID_HOURS)
     return (
         ContactRequest.objects.select_related("customer", "provider", "service")
         .filter(
             customer=customer,
             provider=provider,
             status__in=ACTIVE_CONTACT_STATUSES,
+        )
+        .exclude(
+            status__in={ContactRequest.Status.APPROVED, ContactRequest.Status.AUTO_APPROVED},
+            approved_at__lt=cutoff,
         )
         .order_by("-created_at")
         .first()
@@ -68,12 +75,12 @@ def create_or_reuse_provider_confirmation_request(
             created=False,
         )
 
-    twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+    approval_cutoff = timezone.now() - timedelta(hours=CONTACT_APPROVAL_VALID_HOURS)
     recent_request = (
         ContactRequest.objects.filter(
             customer=customer,
             provider=service.provider,
-            created_at__gte=twenty_four_hours_ago,
+            created_at__gte=approval_cutoff,
         )
         .order_by("-created_at")
         .first()
