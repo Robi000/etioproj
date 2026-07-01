@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
 from django.db.models import Count
 from django.core.paginator import Paginator
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -21,10 +22,11 @@ from accounts.models import TelegramUser
 from accounts.views import get_telegram_user_from_auth_user
 from approvals.contact_workflow import queue_customer_admin_decision_message, queue_customer_rejection_message
 from approvals.models import AdminSettings, ContactRequest, CustomerSurvey
+
 from services.models import PhotoChangeRequest, ProviderDenialLog, ServiceCategory, ServicePhoto, ServiceProfile
 from bot.service_notifications import queue_service_rejection_with_reason, queue_service_status_notification
 from bot.models import BotRegistrationSession
-from bot.services import TelegramBotService
+from bot.services import TelegramBotService, get_bot_api_session
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 from .serializers import (
@@ -92,8 +94,44 @@ def admin_dashboard(request):
             TelegramUser.Role.BOTH,
         ]
     )
-    providers = provider_queryset.order_by("-created_at")[:80]
-    customers = customer_queryset.order_by("-created_at")[:80]
+    provider_paginator = Paginator(provider_queryset.order_by("-created_at"), 30)
+    provider_page_num = request.GET.get("provider_page", 1)
+    providers_page = provider_paginator.get_page(provider_page_num)
+    customer_paginator = Paginator(customer_queryset.order_by("-created_at"), 30)
+    customer_page_num = request.GET.get("customer_page", 1)
+    customers_page = customer_paginator.get_page(customer_page_num)
+
+    # Advanced provider search
+    provider_search_qs = ServiceProfile.objects.select_related(
+        "provider", "category"
+    )
+    svc_id = request.GET.get("ps_svc_id", "").strip()
+    prov_name = request.GET.get("ps_provider", "").strip()
+    username = request.GET.get("ps_username", "").strip()
+    phone = request.GET.get("ps_phone", "").strip()
+    cat = request.GET.get("ps_category", "").strip()
+    if svc_id and svc_id.isdigit():
+        provider_search_qs = provider_search_qs.filter(id=int(svc_id))
+    if prov_name:
+        provider_search_qs = provider_search_qs.filter(
+            models.Q(provider__first_name__icontains=prov_name)
+            | models.Q(provider__last_name__icontains=prov_name)
+        )
+    if username:
+        provider_search_qs = provider_search_qs.filter(
+            provider__telegram_username__icontains=username
+        )
+    if phone:
+        provider_search_qs = provider_search_qs.filter(
+            models.Q(provider__phone_number__icontains=phone)
+            | models.Q(provider__secondary_phone_number__icontains=phone)
+        )
+    if cat:
+        provider_search_qs = provider_search_qs.filter(category__name__icontains=cat)
+    provider_search_qs = provider_search_qs.order_by("-created_at")
+    provider_search_paginator = Paginator(provider_search_qs, 20)
+    provider_search_page_num = request.GET.get("ps_page", 1)
+    provider_search_page = provider_search_paginator.get_page(provider_search_page_num)
 
     admin_token = None
     try:
@@ -132,7 +170,22 @@ def admin_dashboard(request):
                 "session_updated_at": session.updated_at,
             })
 
+    active_tab = request.GET.get("tab", "requests")
+
+    # Paginated negative surveys
+    survey_qs = CustomerSurvey.objects.filter(
+        response="no",
+    ).select_related(
+        "contact_request__customer",
+        "contact_request__provider",
+        "contact_request__service",
+    ).order_by("-responded_at")
+    survey_paginator = Paginator(survey_qs, 20)
+    survey_page_num = request.GET.get("survey_page", 1)
+    negative_surveys_page = survey_paginator.get_page(survey_page_num)
+
     context = {
+        "active_tab": active_tab,
         "stats": {
             "pending_requests": ContactRequest.objects.filter(
                 status__in=[
@@ -157,6 +210,7 @@ def admin_dashboard(request):
             "pending_services": ServiceProfile.objects.filter(
                 approval_status=ServiceProfile.ApprovalStatus.PENDING,
             ).count(),
+            "negative_surveys": CustomerSurvey.objects.filter(response="no").count(),
         },
         "funnel": {
             "total_started": TelegramUser.objects.count(),
@@ -171,8 +225,9 @@ def admin_dashboard(request):
         "pending_services": pending_services,
         "approved_services_page": approved_services_page,
         "rejected_services": rejected_services,
-        "providers": providers,
-        "customers": customers,
+        "providers_page": providers_page,
+        "customers_page": customers_page,
+        "provider_search_page": provider_search_page,
         "settings": AdminSettings.get_settings(),
         "reminder_users": reminder_users,
         "photo_changes": PhotoChangeRequest.objects.filter(
@@ -180,6 +235,7 @@ def admin_dashboard(request):
         ).select_related(
             "service__provider", "service__category"
         ).order_by("-created_at")[:50],
+        "negative_surveys_page": negative_surveys_page,
         "contact_status": ContactRequest.Status,
         "service_status": ServiceProfile.ApprovalStatus,
         "session_state": BotRegistrationSession.State,
@@ -212,6 +268,10 @@ def dashboard_contact_action(request, contact_request_id: int, action: str):
             contact_request.approved_by = admin_user
             contact_request.approved_at = timezone.now()
             contact_request.save()
+            service = contact_request.service
+            if service:
+                service.acceptance_count += 1
+                service.save(update_fields=["acceptance_count", "updated_at"])
             transaction.on_commit(
                 lambda: queue_customer_admin_decision_message(contact_request.id)
             )
@@ -247,6 +307,8 @@ def dashboard_service_action(request, service_id: int, action: str):
         service.approved_by = admin_user
         service.approved_at = timezone.now()
         service.save()
+        if service.provider and service.provider.role != TelegramUser.Role.PROVIDER:
+            TelegramUser.objects.filter(id=service.provider_id).update(role=TelegramUser.Role.PROVIDER)
         transaction.on_commit(
             lambda: queue_service_status_notification(
                 service.id,
@@ -344,6 +406,8 @@ def approve_service(request: Request) -> Response:
     service.approved_by = admin_user
     service.approved_at = timezone.now()
     service.save()
+    if service.provider and service.provider.role != TelegramUser.Role.PROVIDER:
+        TelegramUser.objects.filter(id=service.provider_id).update(role=TelegramUser.Role.PROVIDER)
     transaction.on_commit(
         lambda: queue_service_status_notification(
             service.id,
@@ -528,6 +592,10 @@ def approve_contact(request: Request) -> Response:
     contact_request.approved_by = admin_user
     contact_request.approved_at = timezone.now()
     contact_request.save()
+    service = contact_request.service
+    if service:
+        service.acceptance_count += 1
+        service.save(update_fields=["acceptance_count", "updated_at"])
     transaction.on_commit(
         lambda: queue_customer_admin_decision_message(contact_request.id)
     )
@@ -825,11 +893,11 @@ def _apply_timeout_penalty_if_needed(service) -> None:
     from django.utils import timezone
 
     total_requests = ContactRequest.objects.filter(provider=service.provider).count()
-    if total_requests < 10:
+    if total_requests < 20:
         return
 
     denial_ratio = service.denial_count / total_requests
-    if denial_ratio <= 0.75:
+    if denial_ratio <= 0.85:
         return
 
     is_first_penalty = service.penalty_count == 0
@@ -845,6 +913,78 @@ def _apply_timeout_penalty_if_needed(service) -> None:
         service.provider_id,
         service.penalty_count,
         7 if is_first_penalty else 15,
+    )
+
+
+def send_penalty_release_notification_safely(service_id: int) -> None:
+    from django.db import connection
+    connection.close()
+    try:
+        service = ServiceProfile.objects.select_related("provider").filter(id=service_id).first()
+        if service is None:
+            logger.warning("event=penalty_release_notification_missing_service service_id=%s", service_id)
+            return
+        bot = TelegramBotService()
+        text = (
+            "✅ Your penalty period has ended.\n\n"
+            "Your visibility was left OFF. You can turn it back ON anytime "
+            "from your My Service page in the mini app.\n\n"
+            "Your denial and penalty records have been reset."
+        )
+        sent = bot.send_text(
+            chat_id=service.provider.telegram_id,
+            text=text,
+            reply_markup=bot.build_my_service_status_keyboard(),
+        )
+        logger.info(
+            "event=penalty_release_notification_sent service_id=%s provider_telegram_id=%s sent=%s",
+            service_id,
+            service.provider.telegram_id,
+            sent,
+        )
+    except Exception as exc:
+        logger.exception(
+            "event=penalty_release_notification_failed service_id=%s error=%s",
+            service_id,
+            exc,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def release_penalties(request: Request) -> Response:
+    admin_user = get_admin_telegram_user(request)
+    if admin_user is None and not (request.user.is_staff or request.user.is_superuser):
+        return admin_forbidden_response()
+
+    now = timezone.now()
+    expired = ServiceProfile.objects.filter(
+        penalty_until__isnull=False,
+        penalty_until__lt=now,
+        visibility_status=ServiceProfile.VisibilityStatus.OFF,
+    ).select_related("provider")
+
+    released_count = 0
+    _penalty_release_executor = ThreadPoolExecutor(max_workers=2)
+
+    for service in expired:
+        service.penalty_until = None
+        service.denial_count = 0
+        service.penalty_count = 0
+        service.save(update_fields=["penalty_until", "denial_count", "penalty_count", "updated_at"])
+
+        _penalty_release_executor.submit(send_penalty_release_notification_safely, service.id)
+
+        logger.info(
+            "event=provider_penalty_released service_id=%s provider_id=%s",
+            service.id,
+            service.provider_id,
+        )
+        released_count += 1
+
+    return Response(
+        {"success": True, "released_count": released_count},
+        status=status.HTTP_200_OK,
     )
 
 
@@ -998,72 +1138,7 @@ def send_mass_reminders(request: Request) -> Response:
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def request_location_updates(request: Request) -> Response:
-    admin_user = get_admin_telegram_user(request)
-    if admin_user is None and not (request.user.is_staff or request.user.is_superuser):
-        return admin_forbidden_response()
-
-    cutoff = timezone.now() - timedelta(days=30)
-    bot = TelegramBotService()
-    sent_count = 0
-
-    providers = (
-        ServiceProfile.objects.filter(
-            approval_status=ServiceProfile.ApprovalStatus.APPROVED,
-        )
-        .filter(
-            models.Q(location_update_requested_at__isnull=True)
-            | models.Q(location_update_requested_at__lt=cutoff)
-        )
-        .select_related("provider")
-    )
-
-    location_keyboard = ReplyKeyboardMarkup(
-        [
-            [
-                KeyboardButton(
-                    "Share GPS Location",
-                    request_location=True,
-                )
-            ]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
-
-    for service in providers:
-        try:
-            ok = bot.send_text(
-                chat_id=service.provider.telegram_id,
-                text="Please confirm or update your service location. Tap below to share your current GPS location.",
-                reply_markup=location_keyboard,
-            )
-            if ok:
-                service.location_update_requested_at = timezone.now()
-                ServiceProfile.objects.filter(pk=service.pk).update(
-                    location_update_requested_at=service.location_update_requested_at,
-                )
-                sent_count += 1
-                logger.info(
-                    "event=location_update_requested provider_id=%s service_id=%s",
-                    service.provider_id, service.id,
-                )
-        except Exception:
-            logger.warning(
-                "event=location_update_request_failed provider_id=%s service_id=%s",
-                service.provider_id, service.id,
-            )
-
-    logger.info(
-        "event=location_updates_batch_sent admin_telegram_id=%s sent_count=%s",
-        admin_user.telegram_id if admin_user else "staff",
-        sent_count,
-    )
-
-    return Response(
-        {"success": True, "sent_count": sent_count},
-        status=status.HTTP_200_OK,
-    )
+@api_view(["GET"])
 
 
 @api_view(["GET"])
@@ -1101,11 +1176,13 @@ def approve_photo_change(request: Request, request_id: int) -> Response:
         status=PhotoChangeRequest.Status.PENDING,
     )
 
-    ServicePhoto.objects.update_or_create(
+    photo, _created = ServicePhoto.objects.update_or_create(
         service=change.service,
         order_index=change.order_index,
         defaults={"telegram_file_id": change.new_file_id},
     )
+    from services.photo_storage import store_photo_locally
+    store_photo_locally(photo)
 
     change.status = PhotoChangeRequest.Status.APPROVED
     change.approved_at = timezone.now()
@@ -1393,6 +1470,48 @@ def send_advertisement(request: Request) -> Response:
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def photo_change_proxy(request: Request, request_id: int):
+    admin_user = get_admin_telegram_user(request)
+    if admin_user is None and not (request.user.is_staff or request.user.is_superuser):
+        return admin_forbidden_response()
+
+    change = get_object_or_404(PhotoChangeRequest, id=request_id, status=PhotoChangeRequest.Status.PENDING)
+
+    bot = TelegramBotService()
+    file_url = bot.get_file_download_url(change.new_file_id)
+
+    if not file_url:
+        return Response(
+            {"success": False, "error": "Photo could not be loaded."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    try:
+        telegram_response = get_bot_api_session().get(
+            file_url,
+            timeout=(4, 12),
+        )
+    except Exception:
+        logger.exception("event=photo_change_proxy_fetch_failed request_id=%s", change.id)
+        return Response(
+            {"success": False, "error": "Photo could not be loaded."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    if not telegram_response.ok:
+        return Response(
+            {"success": False, "error": "Photo could not be loaded."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    content_type = telegram_response.headers.get("Content-Type", "image/jpeg")
+    response = HttpResponse(telegram_response.content, content_type=content_type)
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
 def validation_error_response(errors) -> Response:

@@ -79,7 +79,7 @@ class SwipeHistory(models.Model):
             if settings.DEBUG:
                 self.reset_at = timezone.now()
             else:
-                self.reset_at = timezone.now() + timedelta(days=6)
+                self.reset_at = timezone.now() + timedelta(days=1)
 
         self.full_clean()
         super().save(*args, **kwargs)

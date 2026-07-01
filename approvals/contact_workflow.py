@@ -131,6 +131,10 @@ def maybe_auto_approve_contact_request(contact_request: ContactRequest) -> bool:
     contact_request.status = ContactRequest.Status.AUTO_APPROVED
     contact_request.approved_at = timezone.now()
     contact_request.save(update_fields=["status", "approved_at"])
+    service = contact_request.service
+    if service:
+        service.acceptance_count += 1
+        service.save(update_fields=["acceptance_count", "updated_at"])
 
     transaction.on_commit(
         lambda: queue_customer_admin_decision_message(contact_request.id)
@@ -254,15 +258,19 @@ def send_customer_admin_decision_message_safely(contact_request_id: int) -> None
             ContactRequest.Status.AUTO_APPROVED,
         }:
             provider_contact = build_provider_contact_payload(contact_request.provider)
-            contact_value = provider_contact['contact_value']
-            if provider_contact.get('contact_type') == 'telegram_username' and contact_value:
-                contact_line = f"Contact: https://t.me/{contact_value}?text=Hi%21%20I%27m%20from%20Engenagn%20%E2%9C%A8"
-            else:
-                contact_line = f"Contact: {contact_value}"
+            lines = [f"Provider: {provider_contact['display_name']}"]
+            tg = provider_contact.get('telegram_username')
+            phone = provider_contact.get('secondary_phone_number')
+            if phone and tg:
+                lines.append(f"📞 {phone}")
+                lines.append(f"💬 https://t.me/{tg.removeprefix('@')}")
+            elif phone:
+                lines.append(f"📞 {phone}")
+            elif tg:
+                lines.append(f"💬 https://t.me/{tg.removeprefix('@')}")
             text = (
                 "✅ Contact request approved!\n\n"
-                f"Provider: {provider_contact['display_name']}\n"
-                f"{contact_line}\n\n"
+                + "\n".join(lines) + "\n\n"
                 "You can now contact the provider directly."
             )
         elif contact_request.status == ContactRequest.Status.REJECTED:

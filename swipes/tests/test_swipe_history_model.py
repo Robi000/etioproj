@@ -69,7 +69,9 @@ def test_invalid_swipe_status(customer, service):
 
 
 @pytest.mark.django_db
-def test_reset_date_is_six_days(customer, service):
+def test_reset_date_is_one_day(customer, service):
+    from datetime import timedelta
+
     swipe = SwipeHistory.objects.create(
         customer=customer,
         service=service,
@@ -78,7 +80,7 @@ def test_reset_date_is_six_days(customer, service):
 
     delta = swipe.reset_at - timezone.now()
 
-    assert 5 <= delta.days <= 6
+    assert timedelta(hours=23) <= delta <= timedelta(hours=25)
 
 
 @pytest.mark.django_db

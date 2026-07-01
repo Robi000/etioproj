@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from bot.models import BotRegistrationSession
+from services.defaults import DEFAULT_SERVICE_CATEGORY_NAMES
 
 logger = logging.getLogger("marketplace")
 
@@ -18,13 +19,7 @@ PRICE_TYPES = {
     "night": "Night",
 }
 
-ALLOWED_CATEGORIES = {
-    "Electrician",
-    "Cleaner",
-    "Tutor",
-    "Mechanic",
-    "Plumber",
-}
+ALLOWED_CATEGORIES = set(DEFAULT_SERVICE_CATEGORY_NAMES)
 
 
 class RegistrationStateMachine:
@@ -209,8 +204,8 @@ class RegistrationStateMachine:
     ) -> tuple[bool, str]:
         cleaned = description.strip()
 
-        if len(cleaned) < 10:
-            return False, "⚠️ Description is too short. Please send at least 10 characters."
+        if len(cleaned) < 10 or len(cleaned) > 30:
+            return False, "⚠️ Description must be between 10 and 30 characters."
 
         data = session.data
         data["description"] = cleaned

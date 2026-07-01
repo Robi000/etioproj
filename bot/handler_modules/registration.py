@@ -36,6 +36,7 @@ from bot.profile_management import (
 from bot.registration_state import PRICE_TYPES, RegistrationStateMachine
 from bot.service_status import build_provider_service_status_text, get_provider_service
 from bot.services import TelegramBotService
+from services.defaults import DEFAULT_SERVICE_CATEGORY_NAMES
 from services.models import ServiceCategory
 
 from .utils import (
@@ -533,7 +534,6 @@ def handle_callback(
                 telegram_username=context.username,
             )
             RegistrationStateMachine.set_role(session, "provider")
-            TelegramUser.objects.filter(telegram_id=context.telegram_user_id).update(role=TelegramUser.Role.PROVIDER)
             bot.send_text(
                 context.chat_id,
                 "👤 You're now registered as a Provider.\n\n📱 Step 1: Share your primary provider phone."
@@ -572,6 +572,12 @@ def handle_callback(
             name=category_name,
             active=True,
         ).first()
+
+        if category is None and category_name in DEFAULT_SERVICE_CATEGORY_NAMES:
+            category, _ = ServiceCategory.objects.update_or_create(
+                name=category_name,
+                defaults={"active": True},
+            )
 
         if category is None:
             bot.send_text(
@@ -743,6 +749,11 @@ def handle_callback(
                     "Settings → Privacy and Security → Privacy → "
                     "Forwarded Messages → Who can add a link to my account → Everybody"
                 ),
+            )
+            bot.send_text(
+                context.chat_id,
+                "📋 You can view your service in the app:",
+                reply_markup=bot.build_profile_view_keyboard(),
             )
         return BotRouteResult(success, "registration.submit", context.chat_id, context.update_id)
 

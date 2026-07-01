@@ -287,15 +287,6 @@ def save_service(request: Request) -> Response:
             status=status.HTTP_200_OK,
         )
 
-    if SavedServiceRequest.objects.filter(customer=customer).count() >= 3:
-        return Response(
-            {
-                "success": False,
-                "error": "You can save up to 3 services. Please remove a saved service before saving a new one.",
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
     saved = SavedServiceRequest.objects.create(
         customer=customer, service_id=service_id
     )

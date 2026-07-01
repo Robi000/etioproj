@@ -568,7 +568,7 @@ class TestProcessTimeouts:
         service.refresh_from_db()
         assert service.denial_count == 1
 
-    def test_timeout_applies_penalty_when_ratio_exceeds_75(
+    def test_timeout_applies_penalty_when_ratio_exceeds_85(
         self, admin_client, provider_user, customer_user, category, monkeypatch,
         django_capture_on_commit_callbacks,
     ):
@@ -579,14 +579,14 @@ class TestProcessTimeouts:
             visibility_status=ServiceProfile.VisibilityStatus.ON,
         )
 
-        # Create 10 requests + pre-set 8 denials → after timeout: 9/11 ≈ 0.818 > 0.75
-        for _ in range(10):
+        # Create 19 requests + pre-set 17 denials → after timeout: 18/20 = 0.9 > 0.85
+        for _ in range(19):
             ContactRequest.objects.create(
                 customer=customer_user, provider=provider_user,
                 status=ContactRequest.Status.PROVIDER_PENDING,
             )
 
-        service.denial_count = 8
+        service.denial_count = 17
         service.save(update_fields=["denial_count"])
 
         contact_request = ContactRequest.objects.create(
@@ -611,8 +611,8 @@ class TestProcessTimeouts:
         assert response.data["processed_count"] == 1
 
         service.refresh_from_db()
-        assert service.denial_count == 9
-        # 9/11 ≈ 0.818 > 0.75, total_requests = 11 >= 10 → penalty applies
+        assert service.denial_count == 18
+        # 18/20 = 0.9 > 0.85, total_requests = 20 >= 20 → penalty applies
         assert service.penalty_until is not None
         assert service.visibility_status == ServiceProfile.VisibilityStatus.OFF
         assert service.penalty_count == 1

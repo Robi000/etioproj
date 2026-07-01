@@ -309,8 +309,8 @@ def update_age(telegram_user_id: int, age_text: str) -> tuple[bool, str]:
 
 def update_description(telegram_user_id: int, description: str) -> tuple[bool, str]:
     cleaned = description.strip()
-    if len(cleaned) < 10:
-        return False, "Description is too short. Send at least 10 characters."
+    if len(cleaned) < 10 or len(cleaned) > 30:
+        return False, "Description must be between 10 and 30 characters."
 
     service = get_provider_service(telegram_user_id)
     if service is None:
@@ -435,16 +435,13 @@ def add_photo(
     if service is None:
         return False, "No provider profile was found."
 
-    if not service.can_add_photo():
-        return False, "Maximum 3 photos allowed."
-
     if not file_id:
         return False, "Photo file ID was not received."
 
     used_indexes = set(service.photos.values_list("order_index", flat=True))
-    order_index = next((index for index in range(1, 4) if index not in used_indexes), 3)
 
     if service.approval_status == ServiceProfile.ApprovalStatus.APPROVED:
+        order_index = next((index for index in range(1, 4) if index not in used_indexes), 3)
         change = PhotoChangeRequest.objects.create(
             service=service,
             new_file_id=file_id,
@@ -457,10 +454,15 @@ def add_photo(
             "It will be applied after approval."
         )
     else:
-        ServicePhoto.objects.create(
+        if not service.can_add_photo():
+            return False, "Maximum 3 photos allowed."
+        order_index = next((index for index in range(1, 4) if index not in used_indexes), 3)
+        photo = ServicePhoto.objects.create(
             service=service,
             telegram_file_id=file_id,
             order_index=order_index,
         )
+        from services.photo_storage import store_photo_locally
+        store_photo_locally(photo)
         sync_session_from_service(service)
         return True, f"Photo {service.photos.count()}/3 saved."

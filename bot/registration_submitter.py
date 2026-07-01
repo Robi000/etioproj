@@ -272,11 +272,13 @@ class BotRegistrationSubmitter:
         photos: list[dict[str, Any]],
     ) -> None:
         for index, photo in enumerate(photos, start=1):
-            ServicePhoto.objects.create(
+            sp = ServicePhoto.objects.create(
                 service=service,
                 telegram_file_id=photo["telegram_file_id"],
                 order_index=index,
             )
+            from services.photo_storage import store_photo_locally
+            store_photo_locally(sp)
 
     @staticmethod
     def normalize_coordinate(value: Any) -> Decimal:

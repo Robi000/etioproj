@@ -68,6 +68,9 @@ def discovery_swipe(request: Request) -> Response:
     if latitude is None and longitude is None and not telegram_user.has_customer_location and not city_text:
         return location_required_response()
 
+    batch_size = parse_positive_int(request.query_params.get("batch_size"), default=1)
+    batch_size = min(max(batch_size or 1, 1), 6)
+
     services = get_discovery_services(
         customer=telegram_user,
         category_id=filters["category_id"],
@@ -76,6 +79,7 @@ def discovery_swipe(request: Request) -> Response:
         longitude=longitude,
         exclude_service_ids=filters["exclude_service_ids"],
         apply_exploration=True,
+        card_limit=batch_size,
     )
 
     usage_decision = evaluate_contact_request_creation(telegram_user)
@@ -85,18 +89,21 @@ def discovery_swipe(request: Request) -> Response:
             {
                 "success": True,
                 "card": None,
+                "cards": [],
                 "message": "No matching service found.",
                 "provider_protection": build_contact_usage_payload(usage_decision),
             },
             status=status.HTTP_200_OK,
         )
 
-    card = services[0]["card"]
+    cards = [item["card"] for item in services[:batch_size]]
+    card = cards[0]
 
     return Response(
         {
             "success": True,
             "card": card,
+            "cards": cards,
             "provider_protection": build_contact_usage_payload(usage_decision),
         },
         status=status.HTTP_200_OK,
@@ -269,7 +276,7 @@ DISCOVERY_GRADE_PERIOD_DAYS = 7
 RECENT_REQUEST_WINDOW_DAYS = 7
 EXPLORATION_INTERVAL = 5
 PRICE_FLOOR = 1000
-PRICE_CEILING = 20000
+PRICE_CEILING = 50000
 LIKES_REFERENCE = 200
 
 
@@ -281,6 +288,7 @@ def get_discovery_services(
     longitude: Decimal | None,
     exclude_service_ids: list[int] | None = None,
     apply_exploration: bool = False,
+    card_limit: int | None = None,
 ) -> list[dict]:
     admin_settings = AdminSettings.get_settings()
     current_time = timezone.now()
@@ -361,19 +369,10 @@ def get_discovery_services(
             current_time=current_time,
         )
 
-        card = build_discovery_card(
-            service=service,
-            distance_km=distance_km,
-            is_own=(service.provider_id == customer.id),
-        )
-
-        serializer = DiscoveryServiceCardSerializer(data=card)
-        serializer.is_valid(raise_exception=True)
-
         service_rows.append({
             "service": service,
             "distance_km": distance_km,
-            "card": serializer.validated_data,
+            "is_own": service.provider_id == customer.id,
             "live_score": scores["live_score"],
             "price_flagged": scores["price_flagged"],
         })
@@ -387,6 +386,21 @@ def get_discovery_services(
 
     if apply_exploration and len(service_rows) >= EXPLORATION_INTERVAL + 1:
         _inject_exploration(service_rows)
+
+    if card_limit is None:
+        card_materialization_rows = service_rows
+    else:
+        card_materialization_rows = service_rows[:max(0, card_limit)]
+
+    for row in card_materialization_rows:
+        card = build_discovery_card(
+            service=row["service"],
+            distance_km=row["distance_km"],
+            is_own=row["is_own"],
+        )
+        serializer = DiscoveryServiceCardSerializer(data=card)
+        serializer.is_valid(raise_exception=True)
+        row["card"] = serializer.validated_data
 
     return service_rows
 
@@ -424,18 +438,19 @@ def _compute_service_scores(
     likes = service.likes_count or 0
     quality_score = min(1.0, math.log1p(likes) / math.log1p(LIKES_REFERENCE)) * 30.0
 
-    # Price (0-15) — flag if any price out of [1000, 20000]
+    # Price (0-15) — bell curve: max at midpoint, decreases toward both ends
     price_flag = False
     price_score = 0.0
     prices = list(service.prices.all())
     if prices:
         amounts = [Decimal(str(p.amount)) for p in prices]
-        min_price = min(amounts)
-        max_price = max(amounts)
-        if min_price < Decimal(str(PRICE_FLOOR)) or max_price > Decimal(str(PRICE_CEILING)):
+        avg_price = float(sum(amounts) / len(amounts))
+        if avg_price < PRICE_FLOOR or avg_price > PRICE_CEILING:
             price_flag = True
         else:
-            price_score = 15.0
+            price_mid = (PRICE_FLOOR + PRICE_CEILING) / 2.0
+            price_half_range = price_mid - PRICE_FLOOR
+            price_score = 15.0 * max(0.0, 1.0 - abs(avg_price - price_mid) / price_half_range)
 
     # Demand-Fairness (0-10)
     recent_reqs = recent_reqs_by_provider.get(service.provider_id, 0)

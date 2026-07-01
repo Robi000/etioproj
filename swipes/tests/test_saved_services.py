@@ -92,19 +92,19 @@ class TestSaveService:
             customer=customer, service=service
         ).count() == 1
 
-    def test_save_max_three(self, api_client):
+    def test_save_no_limit(self, api_client):
         customer, token = self.setup_customer()
         api_client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
         category = ServiceCategory.objects.create(name="Test Cat")
 
         services = []
-        for i in range(3):
+        for i in range(4):
             p = make_provider(920003 + i, f"Provider{i}")
             s = make_approved_service(p, category, f"Service {i}")
             services.append(s)
             SavedServiceRequest.objects.create(customer=customer, service=s)
 
-        extra_provider = make_provider(920006, "ExtraProvider")
+        extra_provider = make_provider(920007, "ExtraProvider")
         extra = make_approved_service(extra_provider, category, "Extra Service")
         response = api_client.post(
             "/api/swipe/save/",
@@ -112,9 +112,7 @@ class TestSaveService:
             format="json",
         )
 
-        assert response.status_code == 400
-        assert response.data["success"] is False
-        assert "up to 3" in response.data["error"].lower()
+        assert response.status_code == 201
 
     def test_save_unauthenticated(self, api_client):
         response = api_client.post(

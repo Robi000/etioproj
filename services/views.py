@@ -2,7 +2,7 @@ import logging
 
 from django.db import IntegrityError, transaction
 from django.db.models import Avg, Q
-from django.http import HttpResponse
+from django.shortcuts import redirect
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -14,6 +14,7 @@ from accounts.models import TelegramUser
 from accounts.views import get_telegram_user_from_auth_user
 from bot.services import TelegramBotService, get_bot_api_session
 
+from .defaults import DEFAULT_SERVICE_CATEGORY_NAMES
 from .models import ServiceCategory, ServicePhoto, ServicePrice, ServiceProfile
 from .serializers import (
     ServiceCategorySerializer,
@@ -168,13 +169,28 @@ def delete_my_service(request: Request) -> Response:
     if service is None:
         return service_not_found_response()
 
-    service.delete()
+    with transaction.atomic():
+        if service.latitude is not None and service.longitude is not None:
+            telegram_user.customer_latitude = service.latitude
+            telegram_user.customer_longitude = service.longitude
+        if service.city_text:
+            telegram_user.city = service.city_text
+        telegram_user.role = TelegramUser.Role.CUSTOMER
+        telegram_user.save(update_fields=["customer_latitude", "customer_longitude", "city", "role", "updated_at"])
+
+        from bot.models import BotRegistrationSession
+        BotRegistrationSession.objects.filter(
+            telegram_user_id=telegram_user.telegram_id,
+        ).delete()
+
+        service.delete()
 
     return Response(
         {
             "success": True,
             "deleted": True,
-            "delete_behavior": "hard_delete",
+            "role_changed_to": "customer",
+            "gps_preserved": True,
         },
         status=status.HTTP_200_OK,
     )
@@ -270,6 +286,8 @@ def create_my_service_photo(request: Request) -> Response:
             telegram_file_id=serializer.validated_data["telegram_file_id"],
             order_index=order_index,
         )
+        from services.photo_storage import store_photo_locally
+        store_photo_locally(photo)
     except Exception as exc:
         logger.warning(
             "Service photo creation failed for telegram_id=%s service_id=%s: %s",
@@ -395,7 +413,18 @@ def validation_error_response(errors) -> Response:
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def service_categories(request: Request) -> Response:
-    categories = ServiceCategory.objects.filter(active=True)
+    categories_by_name = {
+        category.name: category
+        for category in ServiceCategory.objects.filter(
+            active=True,
+            name__in=DEFAULT_SERVICE_CATEGORY_NAMES,
+        )
+    }
+    categories = [
+        categories_by_name[category_name]
+        for category_name in DEFAULT_SERVICE_CATEGORY_NAMES
+        if category_name in categories_by_name
+    ]
     serializer = ServiceCategorySerializer(categories, many=True)
     return Response({"success": True, "categories": serializer.data})
 
@@ -490,46 +519,22 @@ def service_photo_proxy(request: Request, photo_id: int):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    bot = TelegramBotService()
-    file_url = bot.get_file_download_url(photo.telegram_file_id)
+    if photo.image:
+        return redirect(photo.image.url)
 
-    if not file_url:
-        return Response(
-            {
-                "success": False,
-                "error": "Photo could not be loaded.",
-            },
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
+    from services.photo_storage import store_photo_locally
+    store_photo_locally(photo)
 
-    try:
-        telegram_response = get_bot_api_session().get(
-            file_url,
-            timeout=(4, 12),
-        )
-    except Exception:
-        logger.exception("event=service_photo_proxy_fetch_failed photo_id=%s", photo.id)
-        return Response(
-            {
-                "success": False,
-                "error": "Photo could not be loaded.",
-            },
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
+    if photo.image:
+        return redirect(photo.image.url)
 
-    if not telegram_response.ok:
-        return Response(
-            {
-                "success": False,
-                "error": "Photo could not be loaded.",
-            },
-            status=status.HTTP_502_BAD_GATEWAY,
-        )
-
-    content_type = telegram_response.headers.get("Content-Type", "image/jpeg")
-    response = HttpResponse(telegram_response.content, content_type=content_type)
-    response["Cache-Control"] = "public, max-age=86400"
-    return response
+    return Response(
+        {
+            "success": False,
+            "error": "Photo could not be loaded.",
+        },
+        status=status.HTTP_502_BAD_GATEWAY,
+    )
 
 
 def user_can_own_service(telegram_user: TelegramUser) -> bool:

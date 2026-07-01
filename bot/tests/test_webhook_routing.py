@@ -442,7 +442,7 @@ def test_create_service_requires_telegram_username(monkeypatch):
 def test_customer_create_service_starts_provider_registration(monkeypatch):
     monkeypatch.setattr("bot.handlers.TelegramBotService", FakeTelegramBotService)
     create_policy_accepted_user(887, role=TelegramUser.Role.CUSTOMER, customer_latitude=Decimal("9.03"), customer_longitude=Decimal("38.74"))
-    ServiceCategory.objects.create(name="Cleaner")
+    ServiceCategory.objects.get_or_create(name="Doggy", defaults={"active": True})
 
     result = handle_telegram_update(
         {
@@ -479,7 +479,10 @@ def test_customer_create_service_starts_provider_registration(monkeypatch):
 def test_customer_category_callback_sends_filtered_miniapp_button(monkeypatch):
     monkeypatch.setattr("bot.handlers.TelegramBotService", FakeTelegramBotService)
     create_policy_accepted_user(886, role=TelegramUser.Role.CUSTOMER)
-    category = ServiceCategory.objects.create(name="Cleaner")
+    category, _ = ServiceCategory.objects.get_or_create(
+        name="Doggy",
+        defaults={"active": True},
+    )
 
     result = handle_telegram_update(
         {
@@ -498,7 +501,7 @@ def test_customer_category_callback_sends_filtered_miniapp_button(monkeypatch):
                         "type": "private",
                     },
                 },
-                "data": "customer:browse:category:Cleaner",
+                "data": "customer:browse:category:Doggy",
             },
         }
     )
@@ -635,7 +638,7 @@ def test_registration_review_sends_submit_prompt_after_photos(monkeypatch):
             "telegram_username": "photo_order",
             "phone_number": "+251911111111",
             "secondary_phone_number": "",
-            "category": "Electrician",
+            "category": "Doggy",
             "title": "29",
             "description": "Reliable electrical work.",
             "location": {
@@ -916,6 +919,46 @@ def test_pending_alert_not_sent_on_contact_callback(monkeypatch):
         }
     )
     fake_service = FakeTelegramBotService.instances[0]
+    alert_msg = next(
+        (m for m in fake_service.sent_messages if "pending service request" in m["text"]),
+        None,
+    )
+    assert alert_msg is None
+
+
+@pytest.mark.django_db
+def test_pending_alert_not_sent_on_edit_profile_message(monkeypatch):
+    monkeypatch.setattr("bot.handlers.TelegramBotService", FakeTelegramBotService)
+    provider, customer, service, contact_request = _setup_provider_with_contact(
+        telegram_id=906,
+        username="alert_edit_profile",
+    )
+    provider.policy_accepted_at = timezone.now()
+    provider.policy_version = POLICY_VERSION
+    provider.save(update_fields=["policy_accepted_at", "policy_version", "updated_at"])
+
+    handle_telegram_update(
+        {
+            "update_id": 2006,
+            "message": {
+                "message_id": 6,
+                "chat": {"id": 906, "type": "private"},
+                "from": {
+                    "id": 906,
+                    "is_bot": False,
+                    "first_name": "Provider",
+                    "username": "alert_edit_profile",
+                },
+                "text": "Edit Profile",
+            },
+        }
+    )
+    fake_service = FakeTelegramBotService.instances[0]
+
+    assert any(
+        "Choose what you want to edit" in message["text"]
+        for message in fake_service.sent_messages
+    )
     alert_msg = next(
         (m for m in fake_service.sent_messages if "pending service request" in m["text"]),
         None,

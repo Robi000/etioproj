@@ -31,6 +31,8 @@ class DiscoveryServiceCardSerializer(serializers.Serializer):
     provider_is_verified = serializers.BooleanField()
     provider_admin_tested_badge = serializers.BooleanField()
     likes_count = serializers.IntegerField()
+    denial_count = serializers.IntegerField()
+    acceptance_count = serializers.IntegerField()
     is_own = serializers.BooleanField()
 
 
@@ -60,6 +62,7 @@ def build_discovery_card(
         "photos": [
             {
                 "id": photo.id,
+                "url": photo.image.url if photo.image else None,
                 "telegram_file_id": photo.telegram_file_id,
                 "order_index": photo.order_index,
             }
@@ -73,5 +76,7 @@ def build_discovery_card(
         "provider_is_verified": provider.is_verified,
         "provider_admin_tested_badge": provider.admin_tested_badge,
         "likes_count": service.likes_count,
+        "denial_count": service.denial_count,
+        "acceptance_count": service.acceptance_count,
         "is_own": is_own,
     }

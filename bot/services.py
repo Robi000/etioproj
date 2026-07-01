@@ -18,16 +18,19 @@ from telegram import (
 from urllib3.util.retry import Retry
 
 from bot.networking import force_requests_ipv4, redact_telegram_token
+from services.defaults import DEFAULT_SERVICE_CATEGORY_NAMES
 
 logger = logging.getLogger("marketplace")
 
 force_requests_ipv4()
 
-MESSAGE_CONNECT_TIMEOUT = 4
-MESSAGE_READ_TIMEOUT = 12
+# Telegram Bot API calls normally return quickly. Keep webhook requests from
+# stalling on slow network paths, and avoid retrying ambiguous sendMessage reads.
+MESSAGE_CONNECT_TIMEOUT = 2
+MESSAGE_READ_TIMEOUT = 5
 CALLBACK_CONNECT_TIMEOUT = 1
 CALLBACK_READ_TIMEOUT = 2
-BOT_API_MAX_ATTEMPTS = 2
+BOT_API_MAX_ATTEMPTS = 1
 CALLBACK_API_MAX_ATTEMPTS = 1
 BOT_API_POOL_SIZE = 8
 BOT_API_USER_AGENT = "telegram-marketplace-bot/1.0"
@@ -121,38 +124,19 @@ class TelegramBotService:
         )
 
     def build_category_keyboard(self) -> dict[str, Any]:
+        category_rows = [
+            [
+                {
+                    "text": category_name,
+                    "callback_data": f"registration:category:{category_name}",
+                }
+            ]
+            for category_name in DEFAULT_SERVICE_CATEGORY_NAMES
+        ]
+
         return {
             "inline_keyboard": [
-                [
-                    {
-                        "text": "⚡ Electrician",
-                        "callback_data": "registration:category:Electrician",
-                    }
-                ],
-                [
-                    {
-                        "text": "🧽 Cleaner",
-                        "callback_data": "registration:category:Cleaner",
-                    }
-                ],
-                [
-                    {
-                        "text": "📚 Tutor",
-                        "callback_data": "registration:category:Tutor",
-                    }
-                ],
-                [
-                    {
-                        "text": "🔧 Mechanic",
-                        "callback_data": "registration:category:Mechanic",
-                    }
-                ],
-                [
-                    {
-                        "text": "🚰 Plumber",
-                        "callback_data": "registration:category:Plumber",
-                    }
-                ],
+                *category_rows,
                 [
                     {
                         "text": "❌ Cancel",
@@ -171,23 +155,25 @@ class TelegramBotService:
     def build_customer_category_keyboard(self) -> dict[str, Any]:
         from services.models import ServiceCategory
 
-        emoji_by_name = {
-            "Electrician": "⚡",
-            "Cleaner": "🧽",
-            "Tutor": "📚",
-            "Mechanic": "🔧",
-            "Plumber": "🚰",
-        }
-        categories = ServiceCategory.objects.filter(active=True).order_by("name")
+        available_names = set(
+            ServiceCategory.objects.filter(
+                active=True,
+                name__in=DEFAULT_SERVICE_CATEGORY_NAMES,
+            ).values_list("name", flat=True)
+        )
+        category_names = [
+            category_name
+            for category_name in DEFAULT_SERVICE_CATEGORY_NAMES
+            if category_name in available_names
+        ]
 
         rows = []
-        for category in categories:
-            emoji = emoji_by_name.get(category.name, "🔎")
+        for category_name in category_names:
             rows.append(
                 [
                     {
-                        "text": f"{emoji} {category.name}",
-                        "callback_data": f"customer:browse:category:{category.name}",
+                        "text": category_name,
+                        "callback_data": f"customer:browse:category:{category_name}",
                     }
                 ]
             )
@@ -403,21 +389,36 @@ class TelegramBotService:
                     InlineKeyboardButton("Photos", callback_data="profile:edit:photos"),
                 ],
                 [
+                    self.build_mini_app_button(text="📋 Open My Service", screen="my-service"),
+                ],
+                [
                     InlineKeyboardButton("Done", callback_data="registration:my_service"),
                 ],
             ]
         )
 
-    def build_profile_category_keyboard(self) -> InlineKeyboardMarkup:
+    def build_profile_view_keyboard(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Electrician", callback_data="profile:category:Electrician")],
-                [InlineKeyboardButton("Cleaner", callback_data="profile:category:Cleaner")],
-                [InlineKeyboardButton("Tutor", callback_data="profile:category:Tutor")],
-                [InlineKeyboardButton("Mechanic", callback_data="profile:category:Mechanic")],
-                [InlineKeyboardButton("Plumber", callback_data="profile:category:Plumber")],
-                [InlineKeyboardButton("Cancel", callback_data="profile:edit")],
+                [
+                    self.build_mini_app_button(text="📋 Open My Service", screen="my-service"),
+                ],
             ]
+        )
+
+    def build_profile_category_keyboard(self) -> InlineKeyboardMarkup:
+        rows = [
+            [
+                InlineKeyboardButton(
+                    category_name,
+                    callback_data=f"profile:category:{category_name}",
+                )
+            ]
+            for category_name in DEFAULT_SERVICE_CATEGORY_NAMES
+        ]
+        rows.append([InlineKeyboardButton("Cancel", callback_data="profile:edit")])
+        return InlineKeyboardMarkup(
+            rows
         )
 
     def build_profile_price_keyboard(self, prices: dict | None = None) -> InlineKeyboardMarkup:

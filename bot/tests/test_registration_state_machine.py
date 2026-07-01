@@ -49,7 +49,7 @@ def test_underage_provider_registration_clears_saved_draft():
         {
             "role": "provider",
             "phone_number": "+251911111111",
-            "category": "Electrician",
+            "category": "Doggy",
         }
     )
     session.data = data

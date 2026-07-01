@@ -174,6 +174,10 @@ class ServiceProfile(models.Model):
         default=0,
         help_text="Total contact request denials (including timeouts) by this provider.",
     )
+    acceptance_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Total contact requests approved (admin or auto) for this provider.",
+    )
     penalty_until = models.DateTimeField(
         null=True,
         blank=True,
@@ -386,6 +390,12 @@ class ServicePhoto(models.Model):
         max_length=512,
     )
 
+    image = models.ImageField(
+        upload_to="service_photos/",
+        blank=True,
+        null=True,
+    )
+
     order_index = models.PositiveSmallIntegerField(
         default=1,
     )
@@ -437,6 +447,11 @@ class ServicePhoto(models.Model):
                 }
             )
 
+    def delete(self, *args, **kwargs):
+        if self.image:
+            self.image.delete(save=False)
+        super().delete(*args, **kwargs)
+
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
@@ -467,6 +482,10 @@ class PhotoChangeRequest(models.Model):
     class Meta:
         db_table = "photo_change_requests"
         ordering = ["-created_at"]
+
+    @property
+    def current_photo(self):
+        return self.service.photos.filter(order_index=self.order_index).first()
 
     def __str__(self) -> str:
         return f"PhotoChange service={self.service_id} index={self.order_index} status={self.status}"

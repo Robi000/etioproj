@@ -533,8 +533,8 @@ class TestComputeServiceScores:
             recent_reqs_by_provider={},
             current_time=timezone.now(),
         )
-        # stored = quality(0) + price(15) + demand(10) + fresh(10) = 35
-        assert result["live_score"] == pytest.approx(35.0, abs=0.1)
+        # stored = quality(0) + price(2.449) + demand(10) + fresh(10) = 22.449
+        assert result["live_score"] == pytest.approx(22.449, abs=0.1)
 
     def test_quality_scales_with_likes(self, score_provider, score_category, admin_settings):
         service = _make_priced_service(score_provider, score_category, "Popular", 5000, likes=50)
@@ -547,7 +547,7 @@ class TestComputeServiceScores:
             current_time=timezone.now(),
         )
         expected_quality = min(1.0, math.log1p(50) / math.log1p(LIKES_REFERENCE)) * 30.0
-        expected_stored = expected_quality + 15 + 10 + 10
+        expected_stored = expected_quality + 120/49 + 10 + 10
         assert result["live_score"] == pytest.approx(expected_stored, abs=0.1)
 
     def test_demand_score_drops_with_recent_reqs(self, score_provider, score_category, admin_settings):
@@ -561,7 +561,7 @@ class TestComputeServiceScores:
             current_time=timezone.now(),
         )
         # demand = max(0, 10 - 5) = 5
-        expected_stored = 0 + 15 + 5 + 10  # quality 0 + price 15 + demand 5 + fresh 10
+        expected_stored = 0 + 120/49 + 5 + 10
         assert result["live_score"] == pytest.approx(expected_stored, abs=0.1)
 
     def test_demand_score_floors_at_zero(self, score_provider, score_category, admin_settings):
@@ -575,7 +575,7 @@ class TestComputeServiceScores:
             current_time=timezone.now(),
         )
         # demand = max(0, 10 - min(10, 20)) = 0
-        expected_stored = 0 + 15 + 0 + 10
+        expected_stored = 0 + 120/49 + 0 + 10
         assert result["live_score"] == pytest.approx(expected_stored, abs=0.1)
 
     def test_freshness_decreases_with_age(self, score_provider, score_category, admin_settings):
@@ -589,7 +589,7 @@ class TestComputeServiceScores:
             current_time=timezone.now(),
         )
         expected_fresh = max(0.0, 10.0 - 15.0 / 30.0)  # = 9.5
-        expected_stored = 0 + 15 + 10 + expected_fresh
+        expected_stored = 0 + 120/49 + 10 + expected_fresh
         assert result["live_score"] == pytest.approx(expected_stored, abs=0.3)
 
     def test_grade_period_forced_freshness_10(self, score_provider, score_category, admin_settings):
@@ -606,7 +606,7 @@ class TestComputeServiceScores:
             current_time=timezone.now(),
         )
         # Grade period: liked=0 & age <= 7d → freshness forced to 10
-        expected_stored = 0 + 15 + 10 + 10
+        expected_stored = 0 + 120/49 + 10 + 10
         assert result["live_score"] == pytest.approx(expected_stored, abs=0.1)
 
     def test_proximity_adds_to_live_score(self, score_provider, score_category, admin_settings):
@@ -620,8 +620,8 @@ class TestComputeServiceScores:
             current_time=timezone.now(),
         )
         # proximity = max(0, 1 - 1/10) * 35 = 31.5
-        # stored = 0 + 15 + 10 + 10 = 35
-        expected = 35.0 + 31.5
+        # stored = 0 + 2.449 + 10 + 10 = 22.449
+        expected = 22.449 + 31.5
         assert result["live_score"] == pytest.approx(expected, abs=0.5)
 
 

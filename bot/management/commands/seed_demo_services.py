@@ -23,7 +23,7 @@ DEMO_SERVICES = [
         "is_verified": True,
         "title": "Pipe Repair & Installation",
         "description": "Professional pipe repair, installation, and maintenance for residential and commercial properties. Fast response, quality work.",
-        "category_name": "Plumber",
+        "category_name": "Doggy",
         "city_text": "Addis Ababa",
         "latitude": "9.030000",
         "longitude": "38.750000",
@@ -44,7 +44,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Emergency Plumbing Services",
         "description": "24/7 emergency plumbing services. Burst pipes, leaks, blocked drains. Available on weekends and holidays.",
-        "category_name": "Plumber",
+        "category_name": "Doggy",
         "city_text": "Addis Ababa",
         "latitude": "9.020000",
         "longitude": "38.730000",
@@ -65,7 +65,7 @@ DEMO_SERVICES = [
         "is_verified": True,
         "title": "Electrical Wiring & Rewiring",
         "description": "Complete electrical wiring services for new construction and renovations. Certified electrician with 10+ years experience.",
-        "category_name": "Electrician",
+        "category_name": "Missionary",
         "city_text": "Addis Ababa",
         "latitude": "9.035000",
         "longitude": "38.760000",
@@ -86,7 +86,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.BOTH,
         "title": "Math Tutoring (Grade 1-12)",
         "description": "Experienced math tutor for all grade levels. Specializing in exam preparation, homework help, and concept building.",
-        "category_name": "Tutor",
+        "category_name": "cowgirl",
         "city_text": "Addis Ababa",
         "latitude": "9.010000",
         "longitude": "38.720000",
@@ -106,7 +106,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "English Language Coaching",
         "description": "Conversational English, business English, and academic writing coaching. Customized lessons for all skill levels.",
-        "category_name": "Tutor",
+        "category_name": "cowgirl",
         "city_text": "Addis Ababa",
         "latitude": "9.015000",
         "longitude": "38.725000",
@@ -127,7 +127,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Car Repair & Maintenance",
         "description": "Full-service auto repair shop. Engine diagnostics, brake repair, oil changes, tire rotation, and more. Quality parts guaranteed.",
-        "category_name": "Mechanic",
+        "category_name": "Spooning",
         "city_text": "Adama",
         "latitude": "8.540000",
         "longitude": "39.270000",
@@ -148,7 +148,7 @@ DEMO_SERVICES = [
         "is_verified": True,
         "title": "Home & Office Cleaning",
         "description": "Deep cleaning services for homes and offices. Eco-friendly products, trained staff, affordable rates. Weekly or monthly plans available.",
-        "category_name": "Cleaner",
+        "category_name": "Doggy",
         "city_text": "Addis Ababa",
         "latitude": "9.025000",
         "longitude": "38.745000",
@@ -169,7 +169,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.BOTH,
         "title": "Quality Painting Service",
         "description": "Interior and exterior painting for homes and businesses. Professional finish, premium paints, free color consultation.",
-        "category_name": "Cleaner",
+        "category_name": "Doggy",
         "city_text": "Hawassa",
         "latitude": "7.050000",
         "longitude": "38.480000",
@@ -189,7 +189,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Furniture Assembly Service",
         "description": "Professional furniture assembly for IKEA and other flat-pack furniture. Fast, reliable, and careful with your items.",
-        "category_name": "Mechanic",
+        "category_name": "Spooning",
         "city_text": "Hawassa",
         "latitude": "7.055000",
         "longitude": "38.485000",
@@ -209,7 +209,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Computer Programming Lessons",
         "description": "Learn Python, JavaScript, or web development. Beginner to advanced. Project-based learning with real-world examples.",
-        "category_name": "Tutor",
+        "category_name": "cowgirl",
         "city_text": "Mekele",
         "latitude": "13.500000",
         "longitude": "39.470000",
@@ -230,7 +230,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Bathroom Renovation",
         "description": "Complete bathroom renovation including tiling, fixtures, plumbing, and painting. Transform your bathroom with quality workmanship.",
-        "category_name": "Plumber",
+        "category_name": "Doggy",
         "city_text": "Addis Ababa",
         "latitude": "9.040000",
         "longitude": "38.770000",
@@ -250,7 +250,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Solar Panel Installation",
         "description": "Affordable solar energy solutions for homes and businesses. Installation, maintenance, and repair of solar systems.",
-        "category_name": "Electrician",
+        "category_name": "Missionary",
         "city_text": "Adama",
         "latitude": "8.545000",
         "longitude": "39.275000",
@@ -270,7 +270,7 @@ DEMO_SERVICES = [
         "role": TelegramUser.Role.PROVIDER,
         "title": "Carpet & Upholstery Cleaning",
         "description": "Professional carpet and upholstery cleaning using steam extraction. Removes stains, allergens, and odors effectively.",
-        "category_name": "Cleaner",
+        "category_name": "Doggy",
         "city_text": "Addis Ababa",
         "latitude": "9.008000",
         "longitude": "38.735000",
@@ -294,9 +294,13 @@ PHOTO_URLS = [
 class Command(BaseCommand):
     help = "Seed 10+ demo services across providers, categories, and cities"
 
+    CATEGORY_NAMES = ["Doggy", "Missionary", "cowgirl", "Spooning"]
+
     def handle(self, *args, **options):
         self.stdout.write("Seeding demo services...\n")
 
+        for name in self.CATEGORY_NAMES:
+            ServiceCategory.objects.get_or_create(name=name, defaults={"active": True})
         cat_map = {c.name: c for c in ServiceCategory.objects.all()}
 
         created_providers = 0
@@ -367,11 +371,13 @@ class Command(BaseCommand):
                     created_prices += 1
 
                 for idx, url in enumerate(PHOTO_URLS, start=1):
-                    ServicePhoto.objects.create(
+                    sp = ServicePhoto.objects.create(
                         service=svc,
                         telegram_file_id=url,
                         order_index=idx,
                     )
+                    from services.photo_storage import store_photo_locally
+                    store_photo_locally(sp)
                     created_photos += 1
 
                 self.stdout.write(f"  Created service: [{svc.id}] {svc.title}")

@@ -60,7 +60,7 @@ def test_provider_flow_reaches_submit_ready_state():
         session,
         "skip",
     )[0] is True
-    assert RegistrationStateMachine.set_category(session, "Electrician")[0] is True
+    assert RegistrationStateMachine.set_category(session, "Doggy")[0] is True
     assert RegistrationStateMachine.set_title(session, "28")[0] is True
     assert RegistrationStateMachine.set_description(
         session,
@@ -105,7 +105,7 @@ def test_invalid_price_is_rejected():
 def test_provider_age_must_be_numeric():
     session = RegistrationStateMachine.start_or_reset(123, 456)
 
-    success, message = RegistrationStateMachine.set_title(session, "Professional Electrician")
+    success, message = RegistrationStateMachine.set_title(session, "Professional Provider")
 
     assert success is False
     assert "Age must be a number" in message
@@ -131,7 +131,7 @@ def test_provider_submit_requires_telegram_username():
         {"phone_number": "+251900000000"},
     )[0] is True
     assert RegistrationStateMachine.set_secondary_phone_number(session, "skip")[0] is True
-    assert RegistrationStateMachine.set_category(session, "Electrician")[0] is True
+    assert RegistrationStateMachine.set_category(session, "Doggy")[0] is True
     assert RegistrationStateMachine.set_title(session, "28")[0] is True
     assert RegistrationStateMachine.set_description(
         session,

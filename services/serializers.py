@@ -30,6 +30,8 @@ class ServicePriceSerializer(serializers.ModelSerializer):
 
 
 class ServicePhotoSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
     class Meta:
         model = ServicePhoto
         fields = (
@@ -37,11 +39,16 @@ class ServicePhotoSerializer(serializers.ModelSerializer):
             "telegram_file_id",
             "order_index",
             "created_at",
+            "url",
         )
         read_only_fields = (
             "id",
             "created_at",
+            "url",
         )
+
+    def get_url(self, obj):
+        return obj.image.url if obj.image else None
 
 
 class ServicePhotoCreateSerializer(serializers.Serializer):
@@ -93,6 +100,10 @@ class ServiceProfileSerializer(serializers.ModelSerializer):
             "approved_at",
             "prices",
             "photos",
+            "denial_count",
+            "acceptance_count",
+            "penalty_count",
+            "penalty_until",
             "created_at",
             "updated_at",
         )
@@ -106,6 +117,10 @@ class ServiceProfileSerializer(serializers.ModelSerializer):
             "approved_at",
             "prices",
             "photos",
+            "denial_count",
+            "acceptance_count",
+            "penalty_count",
+            "penalty_until",
             "created_at",
             "updated_at",
         )

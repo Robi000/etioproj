@@ -22,11 +22,12 @@ from adminpanel.views import (
     pending_contacts,
     pending_photo_changes,
     pending_services,
+    photo_change_proxy,
     process_timeouts,
+    release_penalties,
     reject_contact,
     reject_photo_change,
     reject_service,
-    request_location_updates,
     send_advertisement,
     send_mass_reminders,
     send_registration_reminder,
@@ -155,9 +156,9 @@ urlpatterns = [
         name="api-admin-process-timeouts",
     ),
     path(
-        "api/admin/request-location-updates/",
-        request_location_updates,
-        name="api-admin-request-location-updates",
+        "api/admin/release-penalties/",
+        release_penalties,
+        name="api-admin-release-penalties",
     ),
     path(
         "api/admin/photo-changes/pending/",
@@ -173,6 +174,11 @@ urlpatterns = [
         "api/admin/photo-change/<int:request_id>/reject/",
         reject_photo_change,
         name="api-admin-photo-change-reject",
+    ),
+    path(
+        "api/admin/photo-change/<int:request_id>/photo/",
+        photo_change_proxy,
+        name="api-admin-photo-change-proxy",
     ),
     path(
         "api/admin/send-surveys/",

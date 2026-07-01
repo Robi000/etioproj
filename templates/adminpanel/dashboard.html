@@ -570,18 +570,21 @@
         <div class="stat"><span>👤 Total Users</span><strong>{{ funnel.total_started }}</strong></div>
         <div class="stat"><span>✅ Policy Passed</span><strong>{{ funnel.total_policy_passed }}</strong></div>
         <div class="stat"><span>⏳ Mid-Registration</span><strong>{{ funnel.total_mid_registration }}</strong></div>
+        <div class="stat"><span>❌ Negative Surveys</span><strong>{{ stats.negative_surveys }}</strong></div>
     </section>
 
     <nav class="tabs" aria-label="Dashboard sections">
-        <button class="tab active" data-tab="requests" aria-label="Show contact requests tab">Requests</button>
-        <button class="tab" data-tab="services" aria-label="Show services tab">Services</button>
-        <button class="tab" data-tab="users" aria-label="Show users tab">Users</button>
-        <button class="tab" data-tab="settings" aria-label="Show settings tab">Settings</button>
-        <button class="tab" data-tab="reminders" aria-label="Show reminders tab">⏳ Reminders</button>
-        <button class="tab" data-tab="photos" aria-label="Show photo changes tab">📸 Photo Changes</button>
+        <button class="tab{% if active_tab == 'requests' %} active{% endif %}" data-tab="requests" aria-label="Show contact requests tab">Requests</button>
+        <button class="tab{% if active_tab == 'services' %} active{% endif %}" data-tab="services" aria-label="Show services tab">Services</button>
+        <button class="tab{% if active_tab == 'users' %} active{% endif %}" data-tab="users" aria-label="Show users tab">Users</button>
+        <button class="tab{% if active_tab == 'providers' %} active{% endif %}" data-tab="providers" aria-label="Show providers search tab">🔍 Providers</button>
+        <button class="tab{% if active_tab == 'settings' %} active{% endif %}" data-tab="settings" aria-label="Show settings tab">Settings</button>
+        <button class="tab{% if active_tab == 'reminders' %} active{% endif %}" data-tab="reminders" aria-label="Show reminders tab">⏳ Reminders</button>
+        <button class="tab{% if active_tab == 'photos' %} active{% endif %}" data-tab="photos" aria-label="Show photo changes tab">📸 Photo Changes</button>
+        <button class="tab{% if active_tab == 'surveys' %} active{% endif %}" data-tab="surveys" aria-label="Show surveys tab">❌ Surveys</button>
     </nav>
 
-    <section class="section active" id="requests">
+    <section class="section{% if active_tab == 'requests' %} active{% endif %}" id="requests">
         <div class="grid">
             <div class="card">
                 <h2>Pending Requests</h2>
@@ -616,7 +619,7 @@
         </div>
     </section>
 
-    <section class="section" id="services">
+    <section class="section{% if active_tab == 'services' %} active{% endif %}" id="services">
         <div class="grid">
             <div class="card">
                 <h2>Pending Services</h2>
@@ -636,13 +639,13 @@
                 {% if approved_services_page.paginator.num_pages > 1 %}
                     <div class="pagination">
                         {% if approved_services_page.has_previous %}
-                            <a href="?approved_page=1" class="page-link">&laquo; first</a>
-                            <a href="?approved_page={{ approved_services_page.previous_page_number }}" class="page-link">&lsaquo; prev</a>
+                            <a href="?approved_page=1&amp;tab=services" class="page-link">&laquo; first</a>
+                            <a href="?approved_page={{ approved_services_page.previous_page_number }}&amp;tab=services" class="page-link">&lsaquo; prev</a>
                         {% endif %}
                         <span class="page-info">Page {{ approved_services_page.number }} of {{ approved_services_page.paginator.num_pages }}</span>
                         {% if approved_services_page.has_next %}
-                            <a href="?approved_page={{ approved_services_page.next_page_number }}" class="page-link">next &rsaquo;</a>
-                            <a href="?approved_page={{ approved_services_page.paginator.num_pages }}" class="page-link">last &raquo;</a>
+                            <a href="?approved_page={{ approved_services_page.next_page_number }}&amp;tab=services" class="page-link">next &rsaquo;</a>
+                            <a href="?approved_page={{ approved_services_page.paginator.num_pages }}&amp;tab=services" class="page-link">last &raquo;</a>
                         {% endif %}
                     </div>
                 {% endif %}
@@ -658,11 +661,11 @@
         </div>
     </section>
 
-    <section class="section" id="users">
+    <section class="section{% if active_tab == 'users' %} active{% endif %}" id="users">
         <div class="grid">
             <div class="card">
                 <h2>Service Providers</h2>
-                {% for user in providers %}
+                {% for user in providers_page %}
                     <div class="item searchable">
                         <h3>{{ user.get_display_name }}</h3>
                         <div class="meta">
@@ -699,10 +702,23 @@
                 {% empty %}
                     <div class="empty">No providers yet.</div>
                 {% endfor %}
+                {% if providers_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if providers_page.has_previous %}
+                            <a href="?provider_page=1&amp;tab=users" class="page-link">&laquo; first</a>
+                            <a href="?provider_page={{ providers_page.previous_page_number }}&amp;tab=users" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ providers_page.number }} of {{ providers_page.paginator.num_pages }}</span>
+                        {% if providers_page.has_next %}
+                            <a href="?provider_page={{ providers_page.next_page_number }}&amp;tab=users" class="page-link">next &rsaquo;</a>
+                            <a href="?provider_page={{ providers_page.paginator.num_pages }}&amp;tab=users" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
             <div class="card">
                 <h2>Customers</h2>
-                {% for user in customers %}
+                {% for user in customers_page %}
                     <div class="item searchable">
                         <h3>{{ user.get_display_name }}</h3>
                         <div class="meta">
@@ -715,6 +731,19 @@
                 {% empty %}
                     <div class="empty">No customers yet.</div>
                 {% endfor %}
+                {% if customers_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if customers_page.has_previous %}
+                            <a href="?customer_page=1&amp;tab=users" class="page-link">&laquo; first</a>
+                            <a href="?customer_page={{ customers_page.previous_page_number }}&amp;tab=users" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ customers_page.number }} of {{ customers_page.paginator.num_pages }}</span>
+                        {% if customers_page.has_next %}
+                            <a href="?customer_page={{ customers_page.next_page_number }}&amp;tab=users" class="page-link">next &rsaquo;</a>
+                            <a href="?customer_page={{ customers_page.paginator.num_pages }}&amp;tab=users" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
             <div class="card">
                 <h2>System Statistics</h2>
@@ -723,13 +752,69 @@
                         <span>Auto approve contacts: {{ settings.auto_approve_requests }}</span>
                         <span>Swipe reset days: {{ settings.reset_days }}</span>
                         <span>Default radius: {{ settings.default_radius }} km</span>
+                        <span>Total users: {{ funnel.total_started }}</span>
+                        <span>Policy accepted: {{ funnel.total_policy_passed }}</span>
+                        <span>Mid-registration: {{ funnel.total_mid_registration }}</span>
+                        <span>Active providers: {{ stats.service_providers }}</span>
+                        <span>Customers: {{ stats.customers }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="section" id="settings">
+    <section class="section{% if active_tab == 'providers' %} active{% endif %}" id="providers">
+        <div class="grid">
+            <div class="card">
+                <h2>🔍 Advanced Provider Search</h2>
+                <form method="GET" action="{% url 'adminpanel-dashboard' %}" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                    <input type="hidden" name="tab" value="providers">
+                    <input type="text" name="ps_svc_id" placeholder="Service ID" value="{{ request.GET.ps_svc_id|default:'' }}" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;">
+                    <input type="text" name="ps_provider" placeholder="Provider name" value="{{ request.GET.ps_provider|default:'' }}" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;">
+                    <input type="text" name="ps_username" placeholder="Telegram username" value="{{ request.GET.ps_username|default:'' }}" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;">
+                    <input type="text" name="ps_phone" placeholder="Phone number" value="{{ request.GET.ps_phone|default:'' }}" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;">
+                    <input type="text" name="ps_category" placeholder="Category name" value="{{ request.GET.ps_category|default:'' }}" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;">
+                    <div style="display:flex;gap:8px;">
+                        <button type="submit" style="flex:1;padding:8px;background:var(--blue);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:600;">Search</button>
+                        <a href="?tab=providers" style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;background:var(--muted);color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Clear</a>
+                    </div>
+                </form>
+            </div>
+            <div class="card" style="grid-column:1/-1;">
+                <h2>Search Results ({{ provider_search_page.paginator.count }} found)</h2>
+                {% for svc in provider_search_page %}
+                    <div class="item searchable">
+                        <h3>#{{ svc.id }} — {{ svc.title }}</h3>
+                        <div class="meta">
+                            <span>Provider: {{ svc.provider.get_display_name }}</span>
+                            <span>Username: @{{ svc.provider.telegram_username|default:"not_set" }}</span>
+                            <span>Phone: {{ svc.provider.phone_number|default:"not_set" }} / {{ svc.provider.secondary_phone_number|default:"—" }}</span>
+                            <span>Category: {{ svc.category.name }}</span>
+                            <span>Status: {{ svc.approval_status }}</span>
+                            <span>Penalty until: {{ svc.provider.penalty_until|default:"none" }}</span>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="empty">No results. Use the filters above to search providers.</div>
+                {% endfor %}
+                {% if provider_search_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if provider_search_page.has_previous %}
+                            <a href="?ps_page=1&amp;ps_svc_id={{ request.GET.ps_svc_id|urlencode }}&amp;ps_provider={{ request.GET.ps_provider|urlencode }}&amp;ps_username={{ request.GET.ps_username|urlencode }}&amp;ps_phone={{ request.GET.ps_phone|urlencode }}&amp;ps_category={{ request.GET.ps_category|urlencode }}&amp;tab=providers" class="page-link">&laquo; first</a>
+                            <a href="?ps_page={{ provider_search_page.previous_page_number }}&amp;ps_svc_id={{ request.GET.ps_svc_id|urlencode }}&amp;ps_provider={{ request.GET.ps_provider|urlencode }}&amp;ps_username={{ request.GET.ps_username|urlencode }}&amp;ps_phone={{ request.GET.ps_phone|urlencode }}&amp;ps_category={{ request.GET.ps_category|urlencode }}&amp;tab=providers" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ provider_search_page.number }} of {{ provider_search_page.paginator.num_pages }}</span>
+                        {% if provider_search_page.has_next %}
+                            <a href="?ps_page={{ provider_search_page.next_page_number }}&amp;ps_svc_id={{ request.GET.ps_svc_id|urlencode }}&amp;ps_provider={{ request.GET.ps_provider|urlencode }}&amp;ps_username={{ request.GET.ps_username|urlencode }}&amp;ps_phone={{ request.GET.ps_phone|urlencode }}&amp;ps_category={{ request.GET.ps_category|urlencode }}&amp;tab=providers" class="page-link">next &rsaquo;</a>
+                            <a href="?ps_page={{ provider_search_page.paginator.num_pages }}&amp;ps_svc_id={{ request.GET.ps_svc_id|urlencode }}&amp;ps_provider={{ request.GET.ps_provider|urlencode }}&amp;ps_username={{ request.GET.ps_username|urlencode }}&amp;ps_phone={{ request.GET.ps_phone|urlencode }}&amp;ps_category={{ request.GET.ps_category|urlencode }}&amp;tab=providers" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section{% if active_tab == 'settings' %} active{% endif %}" id="settings">
         <div class="card">
             <h2>Current System Settings</h2>
             <div class="item">
@@ -754,7 +839,7 @@
             </div>
         </div>
     </section>
-    <section class="section" id="reminders">
+    <section class="section{% if active_tab == 'reminders' %} active{% endif %}" id="reminders">
         <div class="card" style="max-width:100%;overflow-x:auto;">
             <h2>Users Needing Registration Reminders</h2>
             <p style="color:var(--muted);font-size:14px;margin:0 0 12px;">
@@ -803,37 +888,78 @@
             {% endif %}
         </div>
     </section>
-    <section class="section" id="photos">
+    <section class="section{% if active_tab == 'photos' %} active{% endif %}" id="photos">
         <div class="grid">
-            <div class="card">
-                <h2>📸 Pending Photo Changes</h2>
+            <div class="card" style="padding:0;overflow:hidden;">
+                <div style="padding:16px 20px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700;">📸 Pending Photo Changes ({{ photo_changes|length }})</div>
+                <div>
                 {% for change in photo_changes %}
-                    <div class="item photo-change-item" data-id="{{ change.id }}">
-                        <h3>
-                            {{ change.service.provider.get_display_name }}
-                            {% if change.service.provider.telegram_username %}
-                                <span style="font-weight:400;color:var(--muted);font-size:13px;">@{{ change.service.provider.telegram_username }}</span>
-                            {% endif %}
-                        </h3>
-                        <div class="meta">
-                            <span>Service: {{ change.service.title }}</span>
-                            <span>Category: {{ change.service.category.name }}</span>
-                            <span>Photo #{{ change.order_index }}</span>
-                            <span>Requested: {{ change.created_at|date:"Y-m-d H:i" }}</span>
+                    <div class="photo-change-item" data-id="{{ change.id }}" style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--line);">
+                        <img src="/api/admin/photo-change/{{ change.id }}/photo/" alt="" style="width:160px;height:160px;border-radius:8px;object-fit:cover;background:var(--bg);border:1px solid var(--line);flex-shrink:0;" loading="lazy">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;">{{ change.service.provider.get_display_name }}</div>
+                            <div style="font-size:12px;color:var(--muted);">{{ change.service.title }} · #{{ change.order_index }}</div>
                         </div>
-                        <div class="actions">
-                            <button class="action photo-approve-btn" style="background:var(--green);border:0;border-radius:8px;padding:7px 12px;color:#fff;cursor:pointer;font-weight:700;font-size:13px;">
-                                ✅ Approve
-                            </button>
-                            <button class="action photo-reject-btn" style="background:var(--red);border:0;border-radius:8px;padding:7px 12px;color:#fff;cursor:pointer;font-weight:700;font-size:13px;">
-                                ❌ Reject
-                            </button>
-                            <span class="photo-change-status" style="font-size:12px;margin-left:6px;"></span>
+                        <div style="display:flex;gap:6px;flex-shrink:0;">
+                            <button class="action photo-approve-btn" style="background:var(--green);border:0;border-radius:6px;padding:7px 14px;color:#fff;cursor:pointer;font-weight:700;font-size:12px;">✅</button>
+                            <button class="action photo-reject-btn" style="background:var(--red);border:0;border-radius:6px;padding:7px 14px;color:#fff;cursor:pointer;font-weight:700;font-size:12px;">❌</button>
+                            <span class="photo-change-status" style="font-size:12px;font-weight:600;display:flex;align-items:center;"></span>
                         </div>
                     </div>
                 {% empty %}
-                    <div class="empty">No pending photo changes.</div>
+                    <div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:13px;">No pending photo changes.</div>
                 {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="section{% if active_tab == 'surveys' %} active{% endif %}" id="surveys">
+        <div class="grid">
+            <div class="card" style="padding:0;overflow:hidden;">
+                <div style="padding:16px 20px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700;">❌ Negative Survey Responses ({{ negative_surveys_page.paginator.count }})</div>
+                <div>
+                {% for survey in negative_surveys_page %}
+                    {% with cr=survey.contact_request %}
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;">
+                                Customer: {{ cr.customer.get_display_name }}
+                                {% if cr.customer.telegram_username %} · @{{ cr.customer.telegram_username }}{% endif %}
+                            </div>
+                            <div style="font-size:12px;color:var(--muted);">
+                                Provider: {{ cr.provider.get_display_name }}
+                                {% if cr.provider.telegram_username %} · @{{ cr.provider.telegram_username }}{% endif %}
+                            </div>
+                            <div style="font-size:12px;color:var(--muted);">
+                                Service: {{ cr.service.title }} · {{ cr.service.category.name }}
+                            </div>
+                            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                                Reason: <strong>{{ survey.get_no_reason_display|default:"Not specified" }}</strong>
+                                {% if survey.responded_at %}
+                                    &middot; {{ survey.responded_at|date:"M d, H:i" }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endwith %}
+                {% empty %}
+                    <div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:13px;">No negative survey responses.</div>
+                {% endfor %}
+                {% if negative_surveys_page.paginator.num_pages > 1 %}
+                    <div style="padding:12px 20px;border-top:1px solid var(--line);">
+                        <div class="pagination">
+                            {% if negative_surveys_page.has_previous %}
+                                <a href="?survey_page=1&amp;tab=surveys" class="page-link">&laquo; first</a>
+                                <a href="?survey_page={{ negative_surveys_page.previous_page_number }}&amp;tab=surveys" class="page-link">&lsaquo; prev</a>
+                            {% endif %}
+                            <span class="page-info">Page {{ negative_surveys_page.number }} of {{ negative_surveys_page.paginator.num_pages }}</span>
+                            {% if negative_surveys_page.has_next %}
+                                <a href="?survey_page={{ negative_surveys_page.next_page_number }}&amp;tab=surveys" class="page-link">next &rsaquo;</a>
+                                <a href="?survey_page={{ negative_surveys_page.paginator.num_pages }}&amp;tab=surveys" class="page-link">last &raquo;</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -858,16 +984,29 @@
 </main>
 
 <script>
+    function switchTab(tabId) {
+        tabs.forEach((item) => item.classList.remove("active"));
+        sections.forEach((section) => section.classList.remove("active"));
+        const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+        if (tab) tab.classList.add("active");
+        const section = document.getElementById(tabId);
+        if (section) section.classList.add("active");
+    }
+
     const tabs = document.querySelectorAll(".tab");
     const sections = document.querySelectorAll(".section");
     tabs.forEach((tab) => {
         tab.addEventListener("click", () => {
-            tabs.forEach((item) => item.classList.remove("active"));
-            sections.forEach((section) => section.classList.remove("active"));
-            tab.classList.add("active");
-            document.getElementById(tab.dataset.tab).classList.add("active");
+            switchTab(tab.dataset.tab);
         });
     });
+
+    /* Restore active tab from URL param on page load */
+    (function () {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get("tab");
+        if (tab) switchTab(tab);
+    })();
 
     const searchBox = document.getElementById("searchBox");
     searchBox.addEventListener("input", () => {

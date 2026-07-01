@@ -22,9 +22,27 @@ logger = logging.getLogger("marketplace")
 
 CONTACT_CALLBACK_PREFIX = "contact:"
 SAVE_CALLBACK_PREFIX = "service:save:"
+PROFILE_MANAGEMENT_CALLBACK_PREFIXES = (
+    "profile:",
+    "registration:my_service",
+)
+PROFILE_MANAGEMENT_TEXTS = {
+    "my profile",
+    "profile",
+    "/profile",
+    "edit profile",
+    "edit",
+    "/edit",
+    "go offline",
+    "offline",
+    "/offline",
+    "go online",
+    "online",
+    "/online",
+}
 PENALTY_WARNING_TEXT = (
     "⚠️ Warning: You have denied {denial_count} contact requests. "
-    "If your denial rate exceeds 75% after 10 requests, you will be temporarily suspended. "
+    "If your denial rate exceeds 85% after 20 requests, you will be temporarily suspended. "
     "To avoid this, toggle your visibility Off when you are unavailable."
 )
 
@@ -170,11 +188,11 @@ def reject_contact_request(
 
 def _evaluate_and_apply_penalty(service: ServiceProfile) -> None:
     total_requests = ContactRequest.objects.filter(provider=service.provider).count()
-    if total_requests < 10:
+    if total_requests < 20:
         return
 
     denial_ratio = service.denial_count / total_requests
-    if denial_ratio <= 0.75:
+    if denial_ratio <= 0.85:
         return
 
     is_first_penalty = service.penalty_count == 0
@@ -289,6 +307,9 @@ def send_pending_alert_if_needed(
     if callback_data.startswith(CONTACT_CALLBACK_PREFIX):
         return
 
+    if is_profile_management_interaction(context, callback_data):
+        return
+
     cutoff = timezone.now() - timedelta(hours=1)
     pending_request = ContactRequest.objects.filter(
         provider__telegram_id=context.telegram_user_id,
@@ -316,3 +337,18 @@ def send_pending_alert_if_needed(
         context,
         contact_request_id=pending_request.id,
     )
+
+
+def is_profile_management_interaction(
+    context: TelegramUpdateContext,
+    callback_data: str = "",
+) -> bool:
+    if callback_data.startswith(PROFILE_MANAGEMENT_CALLBACK_PREFIXES):
+        return True
+
+    text = ""
+    if context.message:
+        text = str(context.message.get("text", ""))
+
+    normalized_text = " ".join(text.strip().lower().split())
+    return normalized_text in PROFILE_MANAGEMENT_TEXTS
