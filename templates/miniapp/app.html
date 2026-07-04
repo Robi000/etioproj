@@ -2395,6 +2395,7 @@
         return fetchApi('/discovery/swipe/' + buildSwipeDiscoveryQuery({ batch_size: SWIPE_BATCH_SIZE }))
           .then(res => {
             state.usageInfo = res.provider_protection || state.usageInfo || null;
+            state.nextAvailableAt = res.next_available_at || null;
             renderUsageBar(state.usageInfo);
             const cards = res.success ? ((res.cards && res.cards.length) ? res.cards : (res.card ? [res.card] : [])) : [];
             if (cards.length) {
@@ -2452,15 +2453,40 @@
 
         const svc = currentService();
         if (!svc) {
-          container.innerHTML = `
-            <div class="empty-state">
-              <div class="ring glass">${icons.heartStroke}</div>
-              <h3>You've seen everyone nearby</h3>
-              <p>No more approved providers match right now. Check again soon.</p>
-              <button class="btn-primary" type="button" id="refreshDeckBtn">Refresh deck</button>
-            </div>`;
-          actions.innerHTML = '';
-          document.getElementById('refreshDeckBtn').addEventListener('click', () => loadSwipeServices(true));
+          var naa = state.nextAvailableAt;
+          var naaTs = naa ? new Date(naa).getTime() : null;
+          if (naaTs && naaTs > Date.now()) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <div class="ring glass">${icons.heartStroke}</div>
+                <h3>You've seen everyone nearby</h3>
+                <p style="color:var(--ink-mute);font-size:13px;margin:0;max-width:250px;line-height:1.5">Next batch available in <strong id="nextAvailableCountdown"></strong></p>
+              </div>`;
+            actions.innerHTML = '';
+            (function updateCountdown() {
+              var diff = Math.max(0, Math.floor((naaTs - Date.now()) / 1000));
+              var el = document.getElementById('nextAvailableCountdown');
+              if (!el || diff <= 0) {
+                if (el) el.textContent = 'now';
+                return;
+              }
+              var h = Math.floor(diff / 3600);
+              var m = Math.floor((diff % 3600) / 60);
+              var s = diff % 60;
+              el.textContent = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+              setTimeout(updateCountdown, 1000);
+            })();
+          } else {
+            container.innerHTML = `
+              <div class="empty-state">
+                <div class="ring glass">${icons.heartStroke}</div>
+                <h3>You've seen everyone nearby</h3>
+                <p>No more approved providers match right now. Check again soon.</p>
+                <button class="btn-primary" type="button" id="refreshDeckBtn">Refresh deck</button>
+              </div>`;
+            actions.innerHTML = '';
+            document.getElementById('refreshDeckBtn').addEventListener('click', () => loadSwipeServices(true));
+          }
           return;
         }
 
@@ -3386,8 +3412,26 @@
         detailsEl.innerHTML =
           '<div class="usage-detail-row"><span class="usage-detail-label">Today</span><span class="usage-detail-value">' + today + ' / ' + daily + '</span></div>'
           + '<div class="usage-detail-row"><span class="usage-detail-label">This Week</span><span class="usage-detail-value">' + weekly + ' / ' + (weeklyCap === Infinity ? 'inf' : weeklyCap) + '</span></div>'
-          + (retry > 0 ? '<div class="usage-countdown-large" id="modalCountdown">' + formatCountdown(retry) + '</div><div class="usage-countdown-label">until next request</div>' : '');
+          + (retry > 0 ? '<div class="usage-countdown-large" id="modalCountdown" data-retry="' + retry + '" data-ts="' + Date.now() + '">' + formatCountdown(retry) + '</div><div class="usage-countdown-label">until next request</div>' : '');
         backdrop.classList.add('show');
+        if (retry > 0) {
+          if (window._modalCountdownTimer) clearInterval(window._modalCountdownTimer);
+          window._modalCountdownTimer = setInterval(function() {
+            var el = document.getElementById('modalCountdown');
+            if (!el || !document.getElementById('usageModalBackdrop').classList.contains('show')) {
+              clearInterval(window._modalCountdownTimer);
+              window._modalCountdownTimer = null;
+              return;
+            }
+            var elapsed = Math.floor((Date.now() - parseInt(el.dataset.ts, 10)) / 1000);
+            var remaining = Math.max(0, parseInt(el.dataset.retry, 10) - elapsed);
+            el.textContent = remaining <= 0 ? 'now' : formatCountdown(remaining);
+            if (remaining <= 0) {
+              clearInterval(window._modalCountdownTimer);
+              window._modalCountdownTimer = null;
+            }
+          }, 1000);
+        }
       }
 
       function closeUsageLimitModal(event) {

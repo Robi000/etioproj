@@ -5,7 +5,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -23,7 +23,7 @@ from accounts.views import get_telegram_user_from_auth_user
 from approvals.contact_workflow import queue_customer_admin_decision_message, queue_customer_rejection_message
 from approvals.models import AdminSettings, ContactRequest, CustomerSurvey
 
-from services.models import PhotoChangeRequest, ProviderDenialLog, ServiceCategory, ServicePhoto, ServiceProfile
+from services.models import PhotoChangeRequest, ProviderDenialLog, ServiceCategory, ServicePhoto, ServicePrice, ServiceProfile
 from bot.service_notifications import queue_service_rejection_with_reason, queue_service_status_notification
 from bot.models import BotRegistrationSession
 from bot.services import TelegramBotService, get_bot_api_session
@@ -51,16 +51,45 @@ def admin_dashboard(request):
             status=403,
         )
 
-    contact_requests = (
+    contact_base = (
         ContactRequest.objects.select_related(
             "customer",
             "provider",
             "service",
             "service__category",
             "approved_by",
-        )
-        .order_by("-created_at")[:80]
+        ).order_by("-created_at")
     )
+    pending_contacts_paginator = Paginator(
+        contact_base.filter(
+            status__in=[ContactRequest.Status.PROVIDER_PENDING, ContactRequest.Status.PENDING]
+        ),
+        20,
+    )
+    pending_contacts_page = pending_contacts_paginator.get_page(
+        request.GET.get("req_pending_page", 1)
+    )
+
+    approved_contacts_paginator = Paginator(
+        contact_base.filter(
+            status__in=[ContactRequest.Status.APPROVED, ContactRequest.Status.AUTO_APPROVED]
+        ),
+        20,
+    )
+    approved_contacts_page = approved_contacts_paginator.get_page(
+        request.GET.get("req_approved_page", 1)
+    )
+
+    rejected_contacts_paginator = Paginator(
+        contact_base.filter(
+            status__in=[ContactRequest.Status.REJECTED, ContactRequest.Status.PROVIDER_REJECTED]
+        ),
+        20,
+    )
+    rejected_contacts_page = rejected_contacts_paginator.get_page(
+        request.GET.get("req_rejected_page", 1)
+    )
+
     base_services = (
         ServiceProfile.objects.select_related("provider", "category", "approved_by")
         .prefetch_related("photos", "prices")
@@ -221,7 +250,9 @@ def admin_dashboard(request):
                 state__in=MID_REGISTRATION_STATES
             ).count(),
         },
-        "contact_requests": contact_requests,
+        "pending_contacts_page": pending_contacts_page,
+        "approved_contacts_page": approved_contacts_page,
+        "rejected_contacts_page": rejected_contacts_page,
         "pending_services": pending_services,
         "approved_services_page": approved_services_page,
         "rejected_services": rejected_services,
@@ -1325,6 +1356,57 @@ _advertisement_executor = ThreadPoolExecutor(
 )
 
 MAX_CUSTOMERS_PER_BATCH = 500
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def map_providers(request: Request) -> Response:
+    admin_user = get_admin_telegram_user(request)
+    if admin_user is None and not (request.user.is_staff or request.user.is_superuser):
+        return admin_forbidden_response()
+
+    services = (
+        ServiceProfile.objects.select_related("provider", "category")
+        .prefetch_related("prices", "photos")
+        .filter(
+            approval_status=ServiceProfile.ApprovalStatus.APPROVED,
+            visibility_status=ServiceProfile.VisibilityStatus.ON,
+            provider__is_banned=False,
+            category__active=True,
+            admin_forced_hidden=False,
+            latitude__isnull=False,
+            longitude__isnull=False,
+        )
+        .exclude(Q(penalty_until__isnull=False) & Q(penalty_until__gte=timezone.now()))
+    )
+
+    price_type_labels = dict(ServicePrice.PriceType.choices)
+
+    providers_data = []
+    for s in services:
+        prices = list(s.prices.all())
+        if prices:
+            amounts = sorted((float(p.amount), price_type_labels.get(p.price_type, p.price_type)) for p in prices)
+            low = amounts[0][0]
+            high = amounts[-1][0]
+            price_label = f"{low:,.0f}" if low == high else f"{low:,.0f} - {high:,.0f} ETB"
+        else:
+            price_label = ""
+
+        providers_data.append({
+            "id": s.id,
+            "title": s.title,
+            "category": s.category.name,
+            "lat": float(s.latitude),
+            "lng": float(s.longitude),
+            "provider_name": s.provider.get_display_name(),
+            "provider_username": s.provider.telegram_username or "",
+            "city": s.city_text or "",
+            "price_label": price_label,
+            "has_photo": s.photos.exists(),
+        })
+
+    return Response({"success": True, "providers": providers_data}, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])

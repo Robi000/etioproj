@@ -119,7 +119,7 @@ class AdminSettings(models.Model):
     )
 
     default_radius = models.PositiveIntegerField(
-        default=10,
+        default=30,
     )
 
     created_at = models.DateTimeField(

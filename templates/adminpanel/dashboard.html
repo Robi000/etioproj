@@ -4,6 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Marketplace Admin Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         :root {
@@ -238,6 +243,43 @@
         }
         .section.active {
             display: block;
+        }
+        #mapContainer .leaflet-popup-content-wrapper {
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        #mapContainer .leaflet-popup-content {
+            margin: 10px 14px;
+        }
+        #mapContainer .leaflet-popup-tip {
+            box-shadow: none;
+        }
+        #mapContainer .marker-cluster-small {
+            background-color: rgba(37,99,235,0.2);
+        }
+        #mapContainer .marker-cluster-small div {
+            background-color: #2563eb;
+            color: #fff;
+            font-weight: 700;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        #mapContainer .marker-cluster-medium {
+            background-color: rgba(5,150,105,0.2);
+        }
+        #mapContainer .marker-cluster-medium div {
+            background-color: #059669;
+            color: #fff;
+            font-weight: 700;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        #mapContainer .marker-cluster-large {
+            background-color: rgba(220,38,38,0.2);
+        }
+        #mapContainer .marker-cluster-large div {
+            background-color: #dc2626;
+            color: #fff;
+            font-weight: 700;
+            font-family: 'Inter', system-ui, sans-serif;
         }
         .card {
             background: var(--panel);
@@ -582,39 +624,73 @@
         <button class="tab{% if active_tab == 'reminders' %} active{% endif %}" data-tab="reminders" aria-label="Show reminders tab">⏳ Reminders</button>
         <button class="tab{% if active_tab == 'photos' %} active{% endif %}" data-tab="photos" aria-label="Show photo changes tab">📸 Photo Changes</button>
         <button class="tab{% if active_tab == 'surveys' %} active{% endif %}" data-tab="surveys" aria-label="Show surveys tab">❌ Surveys</button>
+        <button class="tab{% if active_tab == 'map' %} active{% endif %}" data-tab="map" aria-label="Show providers map">🗺️ Map</button>
     </nav>
 
     <section class="section{% if active_tab == 'requests' %} active{% endif %}" id="requests">
         <div class="grid">
             <div class="card">
-                <h2>Pending Requests</h2>
-                {% for request_item in contact_requests %}
-                    {% if request_item.status == contact_status.PROVIDER_PENDING or request_item.status == contact_status.PENDING %}
-                        {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
-                    {% endif %}
+                <h2>Pending Requests ({{ pending_contacts_page.paginator.count }})</h2>
+                {% for request_item in pending_contacts_page %}
+                    {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
                 {% empty %}
                     <div class="empty">No requests yet.</div>
                 {% endfor %}
+                {% if pending_contacts_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if pending_contacts_page.has_previous %}
+                            <a href="?req_pending_page=1&amp;tab=requests" class="page-link">&laquo; first</a>
+                            <a href="?req_pending_page={{ pending_contacts_page.previous_page_number }}&amp;tab=requests" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ pending_contacts_page.number }} of {{ pending_contacts_page.paginator.num_pages }}</span>
+                        {% if pending_contacts_page.has_next %}
+                            <a href="?req_pending_page={{ pending_contacts_page.next_page_number }}&amp;tab=requests" class="page-link">next &rsaquo;</a>
+                            <a href="?req_pending_page={{ pending_contacts_page.paginator.num_pages }}&amp;tab=requests" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
             <div class="card">
-                <h2>Approved Requests</h2>
-                {% for request_item in contact_requests %}
-                    {% if request_item.status == contact_status.APPROVED or request_item.status == contact_status.AUTO_APPROVED %}
-                        {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
-                    {% endif %}
+                <h2>Approved Requests ({{ approved_contacts_page.paginator.count }})</h2>
+                {% for request_item in approved_contacts_page %}
+                    {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
                 {% empty %}
                     <div class="empty">No approved requests yet.</div>
                 {% endfor %}
+                {% if approved_contacts_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if approved_contacts_page.has_previous %}
+                            <a href="?req_approved_page=1&amp;tab=requests" class="page-link">&laquo; first</a>
+                            <a href="?req_approved_page={{ approved_contacts_page.previous_page_number }}&amp;tab=requests" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ approved_contacts_page.number }} of {{ approved_contacts_page.paginator.num_pages }}</span>
+                        {% if approved_contacts_page.has_next %}
+                            <a href="?req_approved_page={{ approved_contacts_page.next_page_number }}&amp;tab=requests" class="page-link">next &rsaquo;</a>
+                            <a href="?req_approved_page={{ approved_contacts_page.paginator.num_pages }}&amp;tab=requests" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
             <div class="card">
-                <h2>Rejected Requests</h2>
-                {% for request_item in contact_requests %}
-                    {% if request_item.status == contact_status.REJECTED or request_item.status == contact_status.PROVIDER_REJECTED %}
-                        {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
-                    {% endif %}
+                <h2>Rejected Requests ({{ rejected_contacts_page.paginator.count }})</h2>
+                {% for request_item in rejected_contacts_page %}
+                    {% include "adminpanel/partials/contact_request_card.html" with request_item=request_item %}
                 {% empty %}
                     <div class="empty">No rejected requests yet.</div>
                 {% endfor %}
+                {% if rejected_contacts_page.paginator.num_pages > 1 %}
+                    <div class="pagination">
+                        {% if rejected_contacts_page.has_previous %}
+                            <a href="?req_rejected_page=1&amp;tab=requests" class="page-link">&laquo; first</a>
+                            <a href="?req_rejected_page={{ rejected_contacts_page.previous_page_number }}&amp;tab=requests" class="page-link">&lsaquo; prev</a>
+                        {% endif %}
+                        <span class="page-info">Page {{ rejected_contacts_page.number }} of {{ rejected_contacts_page.paginator.num_pages }}</span>
+                        {% if rejected_contacts_page.has_next %}
+                            <a href="?req_rejected_page={{ rejected_contacts_page.next_page_number }}&amp;tab=requests" class="page-link">next &rsaquo;</a>
+                            <a href="?req_rejected_page={{ rejected_contacts_page.paginator.num_pages }}&amp;tab=requests" class="page-link">last &raquo;</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -793,6 +869,41 @@
                             <span>Status: {{ svc.approval_status }}</span>
                             <span>Penalty until: {{ svc.provider.penalty_until|default:"none" }}</span>
                         </div>
+                        <div class="actions">
+                            <span class="toggle-wrap">
+                                <span class="toggle-label">Verified</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="toggle-checkbox"
+                                           aria-label="Toggle verified badge for {{ svc.provider.get_display_name }}"
+                                           data-endpoint="/api/admin/provider/{{ svc.provider.id }}/toggle-verified/"
+                                           data-field="is_verified"
+                                           {% if svc.provider.is_verified %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </span>
+                            <span class="toggle-wrap">
+                                <span class="toggle-label">Tested</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="toggle-checkbox"
+                                           aria-label="Toggle tested badge for {{ svc.provider.get_display_name }}"
+                                           data-endpoint="/api/admin/provider/{{ svc.provider.id }}/toggle-tested/"
+                                           data-field="admin_tested_badge"
+                                           {% if svc.provider.admin_tested_badge %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </span>
+                            <span class="toggle-wrap">
+                                <span class="toggle-label" style="color:var(--red);">Hidden</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="toggle-checkbox"
+                                           aria-label="Toggle admin-forced hidden for {{ svc.title }}"
+                                           data-endpoint="/api/admin/service/{{ svc.id }}/toggle-admin-visibility/"
+                                           data-field="admin_forced_hidden"
+                                           {% if svc.admin_forced_hidden %}checked{% endif %}>
+                                    <span class="toggle-slider" style="{% if svc.admin_forced_hidden %}background:var(--red);{% endif %}"></span>
+                                </label>
+                            </span>
+                        </div>
                     </div>
                 {% empty %}
                     <div class="empty">No results. Use the filters above to search providers.</div>
@@ -963,6 +1074,20 @@
             </div>
         </div>
     </section>
+    <section class="section{% if active_tab == 'map' %} active{% endif %}" id="map">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+            <h2 style="margin:0;font-size:20px;font-weight:700;">🗺️ Service Provider Map</h2>
+            <span id="mapProviderCount" style="font-size:13px;color:var(--muted);"></span>
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                <button id="mapRefreshBtn" type="button" class="action" style="background:var(--blue);border:0;border-radius:8px;padding:8px 14px;color:#fff;cursor:pointer;font-weight:600;font-size:13px;">⟳ Refresh</button>
+            </div>
+        </div>
+        <div id="mapContainer" style="height:640px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow-lg);"></div>
+        <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);">
+            <span>🟢 <strong style="color:var(--ink);" id="mapTotalCount">0</strong> total providers with location</span>
+            <span id="mapClusterHint">💡 Zoom in for individual markers</span>
+        </div>
+    </section>
     <!-- Rejection reason dialog for services -->
     <dialog id="rejectDialog" aria-labelledby="rejectDialogTitle" style="border:1px solid var(--line);border-radius:8px;padding:24px;max-width:480px;width:90%;">
         <form method="dialog">
@@ -991,6 +1116,11 @@
         if (tab) tab.classList.add("active");
         const section = document.getElementById(tabId);
         if (section) section.classList.add("active");
+        if (tabId === 'map' && window._mapReady && !window._mapInitialized) {
+            initProviderMap();
+        } else if (tabId === 'map' && window._mapInstance) {
+            setTimeout(function() { window._mapInstance.invalidateSize(); }, 200);
+        }
     }
 
     const tabs = document.querySelectorAll(".tab");
@@ -1336,6 +1466,128 @@
         dots.forEach(function(d) { d.classList.remove('active'); });
         if (dots[next]) dots[next].classList.add('active');
     };
+
+    /* ---- Provider Map ---- */
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    window._mapInitialized = false;
+    window._mapInstance = null;
+    window._mapClusterGroup = null;
+    window._mapReady = true;
+
+    function initProviderMap() {
+        if (window._mapInitialized) return;
+        window._mapInitialized = true;
+        var container = document.getElementById('mapContainer');
+        if (!container) return;
+
+        window._mapInstance = L.map('mapContainer', {
+            center: [9.03, 38.74],
+            zoom: 7,
+            zoomControl: true,
+            attributionControl: true,
+            fadeAnimation: true,
+            zoomAnimation: true,
+            markerZoomAnimation: true,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 18,
+            minZoom: 3,
+        }).addTo(window._mapInstance);
+
+        window._mapClusterGroup = L.markerClusterGroup({
+            chunkedLoading: true,
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            disableClusteringAtZoom: 15,
+        });
+
+        loadMapProviders();
+
+        setTimeout(function() { window._mapInstance.invalidateSize(); }, 300);
+    }
+
+    function loadMapProviders() {
+        var token = document.querySelector('[name="csrfmiddlewaretoken"]');
+        var headers = {'Accept': 'application/json'};
+        if (token) headers['X-CSRFToken'] = token.value;
+
+        fetch('/api/adminpanel/admin/map/providers/', { headers: headers })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                var providers = data.providers || [];
+                document.getElementById('mapTotalCount').textContent = providers.length;
+
+                window._mapClusterGroup.clearLayers();
+
+                var bounds = [];
+                providers.forEach(function(p) {
+                    if (p.lat == null || p.lng == null) return;
+                    var icon = L.divIcon({
+                        html: '<div style="background:#2563eb;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(37,99,235,0.4);border:2px solid #fff;">📍</div>',
+                        className: '',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16],
+                        popupAnchor: [0, -20],
+                    });
+                    var marker = L.marker([p.lat, p.lng], { icon: icon });
+                    var categoryBadge = p.category ? '<span style="display:inline-block;background:#dbeafe;color:#2563eb;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;margin-top:4px;">' + escHtml(p.category) + '</span>' : '';
+                    var photoBadge = p.has_photo ? '📸' : '🚫';
+                    var priceHtml = p.price_label ? '<div style="font-size:12px;color:#059669;margin-top:2px;">💰 ' + escHtml(p.price_label) + '</div>' : '';
+                    marker.bindPopup(
+                        '<div style="font-family:Inter,sans-serif;min-width:200px;max-width:260px;">'
+                        + '<div style="font-size:15px;font-weight:700;color:#0f1724;margin-bottom:2px;">' + escHtml(p.title) + '</div>'
+                        + '<div style="font-size:13px;color:#6b7280;">' + escHtml(p.provider_name) + (p.provider_username ? ' &middot; @' + escHtml(p.provider_username) : '') + '</div>'
+                        + categoryBadge
+                        + '<div style="font-size:12px;color:#6b7280;margin-top:2px;">' + photoBadge + ' ' + escHtml(p.city) + '</div>'
+                        + priceHtml
+                        + '<div style="margin-top:6px;font-size:11px;color:#9ca3af;">ID: ' + p.id + '</div>'
+                        + '</div>',
+                        { closeButton: true, maxWidth: 280 }
+                    );
+                    window._mapClusterGroup.addLayer(marker);
+                    bounds.push([p.lat, p.lng]);
+                });
+
+                if (!window._mapInstance.hasLayer(window._mapClusterGroup)) {
+                    window._mapInstance.addLayer(window._mapClusterGroup);
+                }
+
+                if (bounds.length) {
+                    try {
+                        window._mapInstance.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
+                    } catch(e) {
+                        window._mapInstance.setView([9.03, 38.74], 7);
+                    }
+                } else {
+                    window._mapInstance.setView([9.03, 38.74], 7);
+                }
+
+                document.getElementById('mapProviderCount').textContent = 'Showing ' + providers.length + ' provider' + (providers.length !== 1 ? 's' : '');
+                document.getElementById('mapTotalCount').textContent = providers.length;
+                if (!providers.length) {
+                    document.getElementById('mapContainer').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:14px;flex-direction:column;gap:8px;"><div style="font-size:28px;">🗺️</div><div>No providers with GPS location found.</div><div style="font-size:12px;">Ensure services have latitude &amp; longitude set and are approved.</div></div>';
+                }
+            })
+            .catch(function(err) {
+                console.error('Map providers fetch failed:', err);
+                document.getElementById('mapContainer').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--red);font-size:14px;flex-direction:column;gap:8px;"><div style="font-size:28px;">⚠️</div><div>Failed to load provider data.</div><div style="font-size:12px;">Check console for details.</div></div>';
+            });
+    }
+
+    document.getElementById('mapRefreshBtn').addEventListener('click', function() {
+        if (window._mapInstance) {
+            if (window._mapClusterGroup) window._mapClusterGroup.clearLayers();
+            loadMapProviders();
+        }
+    });
 </script>
 </body>
 </html>

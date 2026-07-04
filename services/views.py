@@ -5,7 +5,7 @@ from django.db.models import Avg, Q
 from django.shortcuts import redirect
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -484,6 +484,7 @@ def category_average_price(request: Request) -> Response:
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([])
 def service_photo_proxy(request: Request, photo_id: int):
     is_admin = request.user.is_authenticated and (
         request.user.is_staff or request.user.is_superuser

@@ -4,6 +4,7 @@ from .views import (
     adminpanel_route_check,
     approve_contact,
     approve_service,
+    map_providers,
     pending_contacts,
     pending_services,
     reject_contact,
@@ -20,4 +21,5 @@ urlpatterns = [
     path("admin/contact/approve/", approve_contact, name="adminpanel-contact-approve"),
     path("admin/contact/reject/", reject_contact, name="adminpanel-contact-reject"),
     path("admin/settings/", update_admin_settings, name="adminpanel-settings"),
+    path("admin/map/providers/", map_providers, name="adminpanel-map-providers"),
 ]

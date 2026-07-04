@@ -84,13 +84,26 @@ def discovery_swipe(request: Request) -> Response:
 
     usage_decision = evaluate_contact_request_creation(telegram_user)
 
+    next_available_at = None
     if not services:
+        earliest_reset = (
+            SwipeHistory.objects.filter(
+                customer=telegram_user,
+                reset_at__gt=timezone.now(),
+            )
+            .order_by("reset_at")
+            .values_list("reset_at", flat=True)
+            .first()
+        )
+        if earliest_reset:
+            next_available_at = earliest_reset.isoformat()
         return Response(
             {
                 "success": True,
                 "card": None,
                 "cards": [],
                 "message": "No matching service found.",
+                "next_available_at": next_available_at,
                 "provider_protection": build_contact_usage_payload(usage_decision),
             },
             status=status.HTTP_200_OK,
