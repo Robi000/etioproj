@@ -381,6 +381,7 @@ def get_discovery_services(
         key=lambda item: (
             item["price_flagged"],
             -item["live_score"],
+            random.random(),
         )
     )
 

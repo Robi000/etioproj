@@ -1,243 +1,295 @@
-import math
+from __future__ import annotations
+
+import os
 import random
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.utils import timezone
+from rest_framework.authtoken.models import Token
 
 from accounts.models import TelegramUser
 from services.models import ServiceCategory, ServicePhoto, ServicePrice, ServiceProfile
 
-CENTER_LAT = 8.873614
-CENTER_LNG = 38.823549
 
-ETHIOPIAN_NAMES = [
-    "Abdi", "Abeba", "Abel", "Abenezer", "Abigail", "Abinet", "Adane", "Addis", "Adisu",
-    "Afework", "Aklilu", "Akmal", "Alam", "Alehegn", "Alemayehu", "Alemitu", "Alemu",
-    "Amanuel", "Amare", "Amsale", "Andualem", "Anteneh", "Aregash", "Arsema", "Aschalew",
-    "Asfaw", "Asha", "Ashagre", "Ashenafi", "Askale", "Assefa", "Aster", "Atsede",
-    "Awol", "Ayana", "Ayele", "Ayenew", "Bayush", "Behailu", "Behailu", "Bekele",
-    "Belay", "Belaynesh", "Berhane", "Berhanu", "Bethelihem", "Beyene", "Biftu", "Birhane",
-    "Biruk", "Bisrat", "Bogale", "Bontu", "Bruktawit", "Chala", "Dagne", "Dawit",
-    "Degife", "Dejen", "Dereje", "Desalegn", "Desta", "Dinknesh", "Diribe", "Ejigayehu",
-    "Eleni", "Elias", "Emebet", "Ephrem", "Ermias", "Eshete", "Eskedar", "Etaferahu",
-    "Ezana", "Eyerusalem", "Fana", "Fanuel", "Feleke", "Fikre", "Fikirte", "Frehiwot",
-    "Gashaw", "Genet", "Getachew", "Getnet", "Girma", "Gizachew", "Gobeze", "Gutu",
-    "Habtamu", "Haddis", "Haftom", "Hagos", "Hailu", "Hana", "Hanna", "Henok",
-    "Heran", "Hewan", "Hiwot", "Hundessa", "Huruy", "Insaf", "Issayas", "Jemila",
-    "Jemal", "Kaleb", "Kaleyesus", "Kalkidan", "Kassahun", "Kebede", "Kebedech",
-    "Kemer", "Kidist", "Kidusan", "Kifle", "Kiya", "Kokeb", "Konjit", "Kumneger",
-    "Lamesgin", "Lemlem", "Leteberhan", "Lidetu", "Liya", "Lulit", "Luwam", "Maaza",
-    "Makeda", "Mamo", "Martha", "Mastewal", "Mathewos", "Mebratu", "Medhin", "Mehret",
-    "Mekdes", "Mekonnen", "Mekuria", "Melaku", "Mela", "Melekte", "Melese", "Meles",
-    "Meron", "Meseret", "Mesfin", "Meskerm", "Michele", "Mihret", "Miki", "Mintesnot",
-    "Mirtse", "Misrak", "Moges", "Mohammed", "Mulatu", "Mulgeta", "Mulu", "Mulugeta",
-    "Mulunesh", "Mussie", "Muluwork", "Naod", "Nardos", "Nasise", "Negash", "Negussie",
-    "Netsanet", "Nibret", "Nigist", "Nuredin", "Rahwa", "Rediet", "Rehima", "Robel",
-    "Ruth", "Saba", "Saba", "Sahle", "Sahlu", "Said", "Salam", "Samrawit", "Samuel",
-    "Sara", "Selam", "Selamawit", "Selassie", "Senait", "Senay", "Serawit", "Shambel",
-    "Shemsu", "Shiferaw", "Shimelis", "Sisay", "Solomon", "Sosina", "Surafel", "Tabitu",
-    "Tadele", "Tadesse", "Tafesse", "Tagesu", "Takele", "Tamrat", "Tarik", "Tasew",
-    "Tayitu", "Taye", "Tedla", "Tekeste", "Tekle", "Teklu", "Temesgen", "Tesfaye",
-    "Teshome", "Tigist", "Tigistu", "Tilahun", "Timket", "Tirsit", "Tsega", "Tsegaye",
-    "Tsehai", "Tsehay", "Tsehaynesh", "Tsige", "Tsion", "Ubah", "Wagaye", "Wasse",
-    "Webshe", "Winta", "Wondimu", "Wondwosen", "Worke", "Worknesh", "Wossen", "Yabsira",
-    "Yalem", "Yalemwork", "Yared", "Yaye", "Yeabsira", "Yemane", "Yemisrach", "Yene",
-    "Yeneneh", "Yerga", "Yeshi", "Yeshitila", "Yetnebersh", "Yohannes", "Yonas",
-    "Yordanos", "Yosef", "Zaid", "Zala", "Zebene", "Zekarias", "Zelalem", "Zena",
-    "Zerai", "Zerihun", "Zewdie", "Zufan", "Zufan",
+BASE_TELEGRAM_ID = 990000000
+COORD_QUANT = Decimal("0.000001")
+
+ETHIOPIAN_FIRST_NAMES = [
+    "Abebe", "Hanna", "Dawit", "Mekdes", "Chala", "Tsion", "Abel", "Hiwot",
+    "Yared", "Saba", "Biruk", "Tigist", "Alemu", "Rahel", "Nahom", "Selam",
+    "Henok", "Marta", "Bethel", "Kaleb", "Ruth", "Samuel", "Liya", "Yonatan",
+    "Eden", "Natnael", "Meron", "Brook", "Lulit", "Fitsum", "Birtukan",
+    "Mahlet", "Kidist", "Tekle", "Yonas", "Biniyam", "Ephrem", "Surafel",
+    "Mastewal", "Tsehay", "Worknesh", "Mulu", "Aster", "Gebre", "Tadesse",
 ]
 
-TITLES = [
-    "Relaxing {cat} Experience", "Premium {cat} Service", "Luxury {cat} Session",
-    "Intimate {cat} Moments", "Sensual {cat} Adventure", "Passionate {cat} Encounter",
-    "Blissful {cat} Retreat", "Ultimate {cat} Pleasure", "Exclusive {cat} Treat",
-    "Divine {cat} Connection", "Heavenly {cat} Escape", "Irresistible {cat} Charm",
-    "Perfect {cat} Getaway", "Romantic {cat} Journey", "Enchanting {cat} Night",
-    "Dreamy {cat} Session", "Tender {cat} Moments", "Sizzling {cat} Affair",
-    "Elegant {cat} Date", "Sensational {cat} Experience",
+ETHIOPIAN_LAST_NAMES = [
+    "Tesfaye", "Bekele", "Alemu", "Tadesse", "Kebede", "Mulugeta", "Gebre",
+    "Haile", "Assefa", "Wolde", "Negash", "Desta", "Fikre", "Teshome",
+    "Abate", "Demissie", "Girma", "Mengistu", "Getachew", "Solomon",
+    "Berhanu", "Defar", "Eshetu", "Fekadu", "Wondimu", "Zenebe",
 ]
 
-DESCRIPTIONS = [
-    "Experience the ultimate relaxation and connection. I provide a warm, safe, and unforgettable experience tailored just for you.",
-    "Let me take you on a journey of pleasure and comfort. Every session is unique and designed to make you feel special.",
-    "Indulge in a premium experience with attention to every detail. Your satisfaction and comfort are my top priorities.",
-    "Discover true intimacy in a welcoming environment. I am here to make your experience memorable and fulfilling.",
-    "Unwind and enjoy a luxurious session filled with passion and care. Every moment is crafted for your pleasure.",
-    "Treat yourself to an extraordinary experience. Professional, discreet, and dedicated to your complete satisfaction.",
-    "Escape the ordinary with a session that combines elegance, passion, and genuine connection. You deserve the best.",
-    "Welcome to a world of sensuality and warmth. I pride myself on creating a comfortable and exciting atmosphere.",
-    "Your pleasure is my mission. Let me guide you through an experience that will leave you wanting more.",
-    "Step into a haven of relaxation and desire. Every session is a new adventure waiting to be explored.",
-]
+CATEGORY_TITLES = {
+    "Doggy": [
+        "Doggy Standard Profile",
+        "Doggy Premium Profile",
+        "Doggy Nearby Provider",
+        "Doggy Evening Provider",
+        "Doggy Weekend Provider",
+    ],
+    "Missionary": [
+        "Missionary Standard Profile",
+        "Missionary Premium Profile",
+        "Missionary Nearby Provider",
+        "Missionary Evening Provider",
+        "Missionary Weekend Provider",
+    ],
+    "cowgirl": [
+        "cowgirl Standard Profile",
+        "cowgirl Premium Profile",
+        "cowgirl Nearby Provider",
+        "cowgirl Evening Provider",
+        "cowgirl Weekend Provider",
+    ],
+    "Spooning": [
+        "Spooning Standard Profile",
+        "Spooning Premium Profile",
+        "Spooning Nearby Provider",
+        "Spooning Evening Provider",
+        "Spooning Weekend Provider",
+    ],
+}
 
-CATEGORY_NAMES = ["Doggy", "Missionary", "cowgirl", "Spooning"]
-PHOTO_URLS = [
-    "https://picsum.photos/seed/service1/400/300",
-    "https://picsum.photos/seed/service2/400/300",
-    "https://picsum.photos/seed/service3/400/300",
-]
+DESCRIPTIONS = {
+    cat: [
+        "Friendly provider with clear availability and consistent pricing.",
+        "Nearby provider with flexible scheduling and great communication.",
+        "Responsive provider with quality service and fair rates.",
+        "Experienced provider focused on customer satisfaction.",
+        "Reliable provider with prompt service and positive reviews.",
+    ]
+    for cat in ["Doggy", "Missionary", "cowgirl", "Spooning"]
+}
 
+PRICE_RANGES = {
+    "Doggy": {"half_day": (1300, 3500), "full_day": (2600, 6800), "night": (3000, 8200)},
+    "Missionary": {"half_day": (1200, 3200), "full_day": (2400, 6500), "night": (2800, 8000)},
+    "cowgirl": {"half_day": (1000, 2800), "full_day": (2000, 5600), "night": (2400, 7200)},
+    "Spooning": {"half_day": (1100, 3000), "full_day": (2200, 6000), "night": (2600, 7600)},
+}
 
-def gps_offset(lat, lng, radius_km=5.0):
-    lat_change = radius_km / 111.0
-    lng_change = radius_km / (111.0 * abs(math.cos(math.radians(lat))) or 1)
-    return (
-        round(lat + random.uniform(-lat_change, lat_change), 6),
-        round(lng + random.uniform(-lng_change, lng_change), 6),
-    )
+# Bounding box for the 4 given coordinates
+# lat: 8.839019 to 9.128243
+# lon: 38.552644 to 38.893267
+LAT_MIN = Decimal("8.839019")
+LAT_MAX = Decimal("9.128243")
+LON_MIN = Decimal("38.552644")
+LON_MAX = Decimal("38.893267")
 
 
 class Command(BaseCommand):
-    help = "Seed ~1000 providers near Addis Ababa with existing categories and photos"
+    help = "Seed 1000 service providers within a custom GPS bounding box"
 
     def add_arguments(self, parser):
-        parser.add_argument("--count", type=int, default=1000, help="Number of providers to create")
-        parser.add_argument("--start-tg-id", type=int, default=8000000, help="Starting telegram_id")
+        parser.add_argument("--seed", type=int, default=20260704)
 
     def handle(self, *args, **options):
-        total = options["count"]
-        start_tg = options["start_tg_id"]
+        rng = random.Random(options["seed"])
 
-        for name in CATEGORY_NAMES:
-            ServiceCategory.objects.get_or_create(name=name, defaults={"active": True})
-        cat_map = {c.name: c for c in ServiceCategory.objects.all()}
-
-        existing = TelegramUser.objects.filter(telegram_id__gte=start_tg).count()
-        self.stdout.write(f"Existing users with tg_id >= {start_tg}: {existing}")
-        if existing >= total:
-            self.stdout.write(self.style.WARNING(f"Already have {existing} users — skipping"))
-            return
-
-        created = 0
-        batch = []
-        tg_id = start_tg
-        start_time = timezone.now()
-
-        self.stdout.write(f"Seeding {total} providers near ({CENTER_LAT}, {CENTER_LNG})...")
-
-        while created < total:
-            tg_id += 1
-            name = random.choice(ETHIOPIAN_NAMES)
-            username = f"{name.lower()}_{tg_id}"[:30]
-            phone = f"+2519{random.randint(10000000, 99999999)}"
-
-            is_verified = random.random() < 0.4
-            is_tested = random.random() < 0.25 and is_verified
-
-            user = TelegramUser(
-                telegram_id=tg_id,
-                telegram_username=username,
-                first_name=name,
-                phone_number=phone,
-                role=TelegramUser.Role.PROVIDER,
-                is_verified=is_verified,
-                is_banned=False,
-                admin_tested_badge=is_tested,
-                policy_accepted_at=start_time,
-                policy_version="1.0",
+        # Load existing local photos from disk
+        photo_paths = self._get_local_photo_paths()
+        if not photo_paths:
+            raise CommandError(
+                "No existing photo files found in media/service_photos/. "
+                "Run seed_demo_services first or add photos manually."
             )
+        self.stdout.write(f"Found {len(photo_paths)} local photo files.\n")
 
-            lat, lng = gps_offset(CENTER_LAT, CENTER_LNG)
-            category = random.choice(list(cat_map.values()))
-            title = random.choice(TITLES).format(cat=category.name)
-            days_old = random.randint(1, 180)
+        categories = self._ensure_categories()
+        existing_users = TelegramUser.objects.count()
 
-            service = ServiceProfile(
-                provider=user,
-                category=category,
-                title=title,
-                description=random.choice(DESCRIPTIONS),
-                city_text="Addis Ababa",
-                latitude=lat,
-                longitude=lng,
-                location_source=ServiceProfile.LocationSource.GPS,
-                visibility_status=ServiceProfile.VisibilityStatus.ON,
-                approval_status=ServiceProfile.ApprovalStatus.APPROVED,
-                likes_count=random.randint(0, 50),
-            )
+        created_users = 0
+        created_services = 0
+        created_prices = 0
+        created_photos = 0
+        skipped = 0
 
-            batch.append((user, service))
+        self.stdout.write("Seeding 1000 providers...\n")
 
-            if len(batch) >= 100 or created + len(batch) >= total:
-                TelegramUser.objects.bulk_create([u for u, _ in batch], ignore_conflicts=True)
+        with transaction.atomic():
+            for index in range(1, 1001):
+                telegram_id = BASE_TELEGRAM_ID + index
+                age = rng.randint(18, 40)
+                category_name = rng.choice(list(CATEGORY_TITLES))
+                first_name = rng.choice(ETHIOPIAN_FIRST_NAMES)
+                last_name = rng.choice(ETHIOPIAN_LAST_NAMES)
 
-                re_users = {u.telegram_id: u for u in TelegramUser.objects.filter(
-                    telegram_id__in=[u.telegram_id for u, _ in batch]
-                )}
+                latitude = self._random_lat(rng)
+                longitude = self._random_lon(rng)
 
-                services_to_create = []
-                for u, svc in batch:
-                    db_user = re_users.get(u.telegram_id)
-                    if not db_user:
-                        continue
-                    svc.provider = db_user
-                    services_to_create.append(svc)
+                service_title = str(age)
 
-                if services_to_create:
-                    ServiceProfile.objects.bulk_create(services_to_create, ignore_conflicts=True)
+                likes_count = rng.randint(0, 300)
+                is_verified = rng.random() < 0.40
+                admin_tested = rng.random() < 0.25
 
-                created += len(batch)
-                self.stdout.write(f"  Created {created}/{total}...")
-                batch = []
+                username = f"seed_provider_{index:04d}"
+                phone = f"+2519{rng.randint(10000000, 99999999)}"
+                secondary = f"+2517{rng.randint(10000000, 99999999)}"
 
-        self.stdout.write(f"\nAll {created} TelegramUsers created.")
-        self.stdout.write("Creating prices and photos...")
+                days_old = rng.randint(1, 120)
+                created_at = timezone.now() - timedelta(days=days_old)
 
-        profiles = ServiceProfile.objects.filter(
-            provider__telegram_id__gte=start_tg,
-            provider__telegram_id__lte=tg_id,
-        ).select_related("provider").order_by("id")
-
-        price_entries = []
-        photo_entries = []
-        price_count = 0
-        photo_count = 0
-
-        for svc in profiles:
-            num_prices = random.randint(1, 3)
-            types = random.sample(["half_day", "full_day", "night"], k=num_prices)
-            for pt in types:
-                amount = round(random.uniform(800, 5000), -2)
-                price_entries.append(
-                    ServicePrice(service=svc, price_type=pt, amount=amount)
+                description = (
+                    f"Provider age: {age}. "
+                    f"{rng.choice(DESCRIPTIONS[category_name])} "
+                    f"Available in Addis Ababa area."
                 )
-            price_count += num_prices
 
-            num_photos = random.randint(2, 3)
-            indices = random.sample([1, 2, 3], k=num_photos)
-            for idx in indices:
-                photo_entries.append(
-                    ServicePhoto(
-                        service=svc,
-                        telegram_file_id=PHOTO_URLS[idx - 1],
-                        order_index=idx,
+                user, user_created = TelegramUser.objects.get_or_create(
+                    telegram_id=telegram_id,
+                    defaults={
+                        "telegram_username": username,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "phone_number": phone,
+                        "secondary_phone_number": secondary,
+                        "role": TelegramUser.Role.PROVIDER,
+                        "is_verified": is_verified,
+                        "admin_tested_badge": admin_tested,
+                        "city": "Addis Ababa",
+                        "likes_count": likes_count,
+                        "is_banned": False,
+                    },
+                )
+
+                if user_created:
+                    created_users += 1
+                    auth_user, _ = User.objects.get_or_create(
+                        username=f"telegram_{telegram_id}",
                     )
+                    Token.objects.get_or_create(user=auth_user)
+                else:
+                    skipped += 1
+                    continue
+
+                service, service_created = ServiceProfile.objects.get_or_create(
+                    provider=user,
+                    defaults={
+                        "category": categories[category_name],
+                        "title": service_title,
+                        "description": description,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "city_text": "Addis Ababa",
+                        "location_source": ServiceProfile.LocationSource.GPS,
+                        "visibility_status": ServiceProfile.VisibilityStatus.ON,
+                        "approval_status": ServiceProfile.ApprovalStatus.APPROVED,
+                        "approved_at": timezone.now() - timedelta(days=rng.randint(1, 90)),
+                        "likes_count": likes_count,
+                        "admin_forced_hidden": False,
+                        "penalty_until": None,
+                        "rejection_reason": "",
+                    },
                 )
-            photo_count += num_photos
 
-            if svc.created_at is None:
-                ServiceProfile.objects.filter(pk=svc.pk).update(
-                    created_at=start_time - timedelta(days=random.randint(1, 180))
-                )
+                if service_created:
+                    ServiceProfile.objects.filter(pk=service.pk).update(created_at=created_at)
+                    created_services += 1
+                else:
+                    skipped += 1
+                    continue
 
-            if len(price_entries) >= 500:
-                ServicePrice.objects.bulk_create(price_entries, ignore_conflicts=True)
-                price_entries = []
-            if len(photo_entries) >= 500:
-                ServicePhoto.objects.bulk_create(photo_entries, ignore_conflicts=True)
-                photo_entries = []
+                # Prices
+                price_ranges = PRICE_RANGES[category_name]
+                prices_data = {
+                    ServicePrice.PriceType.HALF_DAY: self._random_price(price_ranges["half_day"], rng),
+                    ServicePrice.PriceType.FULL_DAY: self._random_price(price_ranges["full_day"], rng),
+                }
+                if rng.random() < 0.60:
+                    prices_data[ServicePrice.PriceType.NIGHT] = self._random_price(price_ranges["night"], rng)
 
-        if price_entries:
-            ServicePrice.objects.bulk_create(price_entries, ignore_conflicts=True)
-        if photo_entries:
-            ServicePhoto.objects.bulk_create(photo_entries, ignore_conflicts=True)
+                for price_type, amount in prices_data.items():
+                    ServicePrice.objects.create(
+                        service=service,
+                        price_type=price_type,
+                        amount=amount,
+                    )
+                    created_prices += 1
 
-        elapsed = (timezone.now() - start_time).total_seconds()
-        self.stdout.write(self.style.SUCCESS(
-            f"\nDone in {elapsed:.1f}s: {created} providers, {price_count} prices, "
-            f"{photo_count} photos\n"
-            f"Badge distribution: verified+tested={sum(1 for s in profiles if s.provider.admin_tested_badge)}, "
-            f"verified only={sum(1 for s in profiles if s.provider.is_verified and not s.provider.admin_tested_badge)}, "
-            f"neither={sum(1 for s in profiles if not s.provider.is_verified)}"
-        ))
+                # Photos — pick 1-3 random local photos and copy them
+                photo_count = rng.choices([1, 2, 3], weights=[15, 45, 40], k=1)[0]
+                chosen_paths = rng.sample(photo_paths, min(photo_count, len(photo_paths)))
+                for order_index, file_path in enumerate(chosen_paths, start=1):
+                    with open(file_path, "rb") as f:
+                        content = f.read()
+                    file_name = os.path.basename(file_path)
+                    sp = ServicePhoto(
+                        service=service,
+                        telegram_file_id=file_name,
+                        order_index=order_index,
+                    )
+                    sp.image.save(
+                        f"seed_{telegram_id}_{order_index}_{file_name}",
+                        ContentFile(content),
+                        save=False,
+                    )
+                    sp.full_clean()
+                    sp.save()
+                    created_photos += 1
+
+                if index % 100 == 0:
+                    self.stdout.write(f"  {index}/1000 providers seeded...")
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\nDone. "
+                f"Users created: {created_users}, "
+                f"services created: {created_services}, "
+                f"prices created: {created_prices}, "
+                f"photos created: {created_photos}, "
+                f"skipped: {skipped}."
+                f"\nTotal TelegramUsers now: {TelegramUser.objects.count()} "
+                f"(was {existing_users})."
+            )
+        )
+
+    def _get_local_photo_paths(self) -> list[str]:
+        media_dir = os.path.join(settings.MEDIA_ROOT, "service_photos")
+        if not os.path.isdir(media_dir):
+            return []
+        paths = []
+        for fname in sorted(os.listdir(media_dir)):
+            full = os.path.join(media_dir, fname)
+            if os.path.isfile(full) and fname.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                paths.append(full)
+        return paths
+
+    def _ensure_categories(self) -> dict[str, ServiceCategory]:
+        categories = {}
+        for name in CATEGORY_TITLES:
+            cat, _ = ServiceCategory.objects.update_or_create(
+                name=name,
+                defaults={"active": True},
+            )
+            categories[name] = cat
+        return categories
+
+    def _random_lat(self, rng: random.Random) -> Decimal:
+        raw = rng.uniform(float(LAT_MIN), float(LAT_MAX))
+        return Decimal(raw).quantize(COORD_QUANT, rounding=ROUND_HALF_UP)
+
+    def _random_lon(self, rng: random.Random) -> Decimal:
+        raw = rng.uniform(float(LON_MIN), float(LON_MAX))
+        return Decimal(raw).quantize(COORD_QUANT, rounding=ROUND_HALF_UP)
+
+    def _random_price(self, bounds: tuple[int, int], rng: random.Random) -> Decimal:
+        value = rng.randrange(bounds[0], bounds[1] + 1, 50)
+        return Decimal(value).quantize(Decimal("0.01"))

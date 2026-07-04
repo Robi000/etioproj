@@ -354,11 +354,6 @@ def build_contact_request_status_payload(
             "category": service.category.name,
         }
 
-    if contact_visible:
-        payload["provider_contact"] = build_provider_contact_payload(
-            contact_request.provider
-        )
-
     return payload
 
 
